@@ -32,6 +32,10 @@
 		.btn-primary:hover { background: #002244; }
 		.btn-danger { background: #c00; color: white; font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 3px; border: none; cursor: pointer; }
 		.btn-danger:hover { background: #a00; }
+		.btn-edit { background: var(--primary-light); color: var(--primary); font-size: 0.85rem; padding: 0.25rem 0.5rem; border-radius: 3px; border: 1px solid var(--border); cursor: pointer; font-weight: 600; margin-right: 0.35rem; }
+		.btn-edit:hover { background: #d5e3ef; }
+		.btn-ghost { background: transparent; color: var(--primary); border: 1px solid var(--border); font-size: 0.85rem; padding: 0.35rem 0.75rem; border-radius: 4px; cursor: pointer; font-weight: 600; margin-left: 0.5rem; }
+		.btn-ghost:hover { background: var(--primary-light); }
 		.balance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; }
 		@media (max-width: 600px) { .balance-grid { grid-template-columns: 1fr; } }
 		.balance-box { background: white; border: 2px solid var(--primary-light); border-radius: 8px; padding: 1rem; text-align: center; }
@@ -132,6 +136,7 @@
 				</div>
 				<div class="form-row">
 					<button type="submit" class="btn btn-primary" id="addBtn">Add leave</button>
+					<button type="button" class="btn-ghost" id="cancelEditBtn" style="display:none;">Cancel edit</button>
 				</div>
 				<div id="statusMsg"></div>
 			</form>
@@ -298,6 +303,13 @@
 		return await sbFetch('/rest/v1/leave_entries?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
 	}
 
+	async function updateEntry(id, patch) {
+		return await sbFetch('/rest/v1/leave_entries?id=eq.' + encodeURIComponent(id), {
+			method: 'PATCH',
+			body: JSON.stringify(patch)
+		});
+	}
+
 	// ── Render balance ─────────────────────────────────────────────
 	function renderBalance(year, entries) {
 		const ent = getEntitlement(year);
@@ -317,6 +329,27 @@
 		document.getElementById('casualRemain').textContent = Math.max(0, ent.casualHalfDays - casualUsedHalf);
 	}
 
+	// ── Edit mode ──────────────────────────────────────────────────
+	let editingEntryId = null;
+
+	function clearEditMode(clearStatus) {
+		editingEntryId = null;
+		document.getElementById('addBtn').textContent = 'Add leave';
+		document.getElementById('cancelEditBtn').style.display = 'none';
+		if (clearStatus !== false) document.getElementById('statusMsg').textContent = '';
+	}
+
+	function sumUsageFromEntries(entries, excludeId) {
+		let annualUsed = 0, casualUsedHalf = 0;
+		(entries || []).forEach(e => {
+			if (excludeId && e.id === excludeId) return;
+			if (e.full_or_half === 'covered') return;
+			if (e.type === 'annual') annualUsed += (e.full_or_half === 'full' ? 1 : 0.5);
+			else if (e.type === 'casual') casualUsedHalf += (e.full_or_half === 'full' ? 2 : 1);
+		});
+		return { annualUsed, casualUsedHalf };
+	}
+
 	// ── Render list ────────────────────────────────────────────────
 	function renderList(year, entries) {
 		const tbody = document.getElementById('leaveListBody');
@@ -328,19 +361,41 @@
 			const typeLabel = e.type === 'annual' ? 'Annual' : 'Casual';
 			const fullHalf = e.full_or_half === 'full' ? 'Full' : e.full_or_half === 'half' ? 'Half' : 'Covered';
 			const hd = e.full_or_half === 'covered' ? '0' : e.full_or_half === 'full' ? '2' : '1';
-			return '<tr data-id="' + e.id + '">' +
+			const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+			return '<tr data-id="' + esc(e.id) + '"' +
+				' data-type="' + esc(e.type) + '"' +
+				' data-date="' + esc(e.date) + '"' +
+				' data-full-or-half="' + esc(e.full_or_half) + '"' +
+				' data-notes="' + esc(e.notes || '') + '">' +
 				'<td>' + e.date + '</td>' +
 				'<td>' + typeLabel + '</td>' +
 				'<td>' + fullHalf + '</td>' +
 				'<td>' + hd + ' hd</td>' +
 				'<td>' + (e.notes || '—') + '</td>' +
-				'<td><button type="button" class="btn-danger delete-btn">Delete</button></td></tr>';
+				'<td><button type="button" class="btn-edit edit-btn">Edit</button>' +
+				'<button type="button" class="btn-danger delete-btn">Delete</button></td></tr>';
 		}).join('');
+		tbody.querySelectorAll('.edit-btn').forEach(btn => {
+			btn.onclick = () => {
+				const tr = btn.closest('tr');
+				editingEntryId = tr.getAttribute('data-id');
+				document.getElementById('leaveType').value = tr.getAttribute('data-type');
+				document.getElementById('leaveDate').value = tr.getAttribute('data-date');
+				document.getElementById('fullOrHalf').value = tr.getAttribute('data-full-or-half');
+				document.getElementById('notes').value = tr.getAttribute('data-notes') || '';
+				document.getElementById('addBtn').textContent = 'Update leave';
+				document.getElementById('cancelEditBtn').style.display = 'inline-block';
+				document.getElementById('statusMsg').textContent = 'Editing this row — adjust fields, then Update leave.';
+				document.getElementById('statusMsg').style.color = '#555';
+				document.getElementById('leaveForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+			};
+		});
 		tbody.querySelectorAll('.delete-btn').forEach(btn => {
 			btn.onclick = async () => {
 				const id = btn.closest('tr').getAttribute('data-id');
 				try {
 					await deleteEntry(id);
+					if (editingEntryId === id) clearEditMode();
 					showToast('Entry deleted.');
 					await refreshTable();
 				} catch(err) {
@@ -387,6 +442,11 @@
 		sel.onchange = refreshTable;
 	}
 
+	document.getElementById('cancelEditBtn').onclick = function() {
+		document.getElementById('leaveForm').reset();
+		clearEditMode();
+	};
+
 	// ── Form submit ────────────────────────────────────────────────
 	document.getElementById('leaveForm').onsubmit = async function(ev) {
 		ev.preventDefault();
@@ -399,6 +459,7 @@
 		const notes = document.getElementById('notes').value.trim();
 		const statusMsg = document.getElementById('statusMsg');
 		const addBtn = document.getElementById('addBtn');
+		const isEdit = !!editingEntryId;
 
 		const year = getPeriodYear(leaveDate);
 		if (year == null) {
@@ -406,16 +467,15 @@
 			return;
 		}
 
-		// Check balance
+		// Check balance (when editing, exclude this row from usage totals)
 		const ent = getEntitlement(year);
 		let usedAnnual = 0, usedCasualHalf = 0;
 		try {
 			const existing = await fetchEntries(year);
-			existing.forEach(e => {
-				if (e.full_or_half === 'covered') return;
-				if (e.type === 'annual') usedAnnual += (e.full_or_half === 'full' ? 1 : 0.5);
-				else if (e.type === 'casual') usedCasualHalf += (e.full_or_half === 'full' ? 2 : 1);
-			});
+			const excl = isEdit ? editingEntryId : null;
+			const sums = sumUsageFromEntries(existing, excl);
+			usedAnnual = sums.annualUsed;
+			usedCasualHalf = sums.casualUsedHalf;
 		} catch(err) {
 			showToast('Could not verify balance: ' + err.message, true);
 			return;
@@ -424,41 +484,56 @@
 		if (type === 'annual' && fullOrHalf !== 'covered') {
 			const adding = fullOrHalf === 'full' ? 1 : 0.5;
 			if (usedAnnual + adding > ent.annual) {
-				showToast('Annual leave: only ' + (ent.annual - usedAnnual) + ' days remaining.', true);
+				showToast('Annual leave: only ' + Math.max(0, ent.annual - usedAnnual) + ' days remaining.', true);
 				return;
 			}
 		}
 		if (type === 'casual' && fullOrHalf !== 'covered') {
 			const addHalf = fullOrHalf === 'full' ? 2 : 1;
 			if (usedCasualHalf + addHalf > ent.casualHalfDays) {
-				showToast('Casual leave: only ' + (ent.casualHalfDays - usedCasualHalf) + ' half-day(s) remaining.', true);
+				showToast('Casual leave: only ' + Math.max(0, ent.casualHalfDays - usedCasualHalf) + ' half-day(s) remaining.', true);
 				return;
 			}
 		}
 
 		addBtn.disabled = true;
-		statusMsg.textContent = 'Saving…';
+		statusMsg.textContent = isEdit ? 'Updating…' : 'Saving…';
 		statusMsg.style.color = '#555';
 
 		try {
-			await insertEntry({
-				id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-				user_id: userId,
-				type: type,
-				date: leaveDate,
-				full_or_half: fullOrHalf,
-				notes: notes,
-				join_date: getJoinDate().toISOString().slice(0,10)
-			});
-			document.getElementById('leaveForm').reset();
-			statusMsg.textContent = 'Saved ✓';
-			statusMsg.style.color = '#0a5f0a';
-			showToast('Leave entry saved ✓');
+			if (isEdit) {
+				await updateEntry(editingEntryId, {
+					type: type,
+					date: leaveDate,
+					full_or_half: fullOrHalf,
+					notes: notes,
+					join_date: getJoinDate().toISOString().slice(0,10)
+				});
+				document.getElementById('leaveForm').reset();
+				clearEditMode(false);
+				statusMsg.textContent = 'Updated ✓';
+				statusMsg.style.color = '#0a5f0a';
+				showToast('Leave entry updated ✓');
+			} else {
+				await insertEntry({
+					id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+					user_id: userId,
+					type: type,
+					date: leaveDate,
+					full_or_half: fullOrHalf,
+					notes: notes,
+					join_date: getJoinDate().toISOString().slice(0,10)
+				});
+				document.getElementById('leaveForm').reset();
+				statusMsg.textContent = 'Saved ✓';
+				statusMsg.style.color = '#0a5f0a';
+				showToast('Leave entry saved ✓');
+			}
 			await refreshTable();
 		} catch(err) {
 			statusMsg.textContent = 'Error: ' + err.message;
 			statusMsg.style.color = '#c00';
-			showToast('Save failed: ' + err.message, true);
+			showToast((isEdit ? 'Update' : 'Save') + ' failed: ' + err.message, true);
 		}
 
 		addBtn.disabled = false;
