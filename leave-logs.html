@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Leave Logs — Delivergate Pvt Ltd</title>
+	<style>
+		:root {
+			--primary: #003366;
+			--primary-light: #e6eef5;
+			--accent: #0066cc;
+			--text: #222;
+			--border: #ccc;
+		}
+		* { box-sizing: border-box; }
+		body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: var(--text); line-height: 1.5; background: #f8f9fa; }
+		.container { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+		header { background: var(--primary); color: white; padding: 1.25rem 1.5rem; margin: 0 0 1.5rem 0; }
+		header h1 { margin: 0; font-size: 1.5rem; }
+		header p { margin: 0.35rem 0 0 0; opacity: 0.9; font-size: 0.95rem; }
+		.card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 1.25rem; overflow: hidden; }
+		.card-head { background: var(--primary-light); padding: 0.75rem 1rem; font-weight: 600; color: var(--primary); border-bottom: 1px solid var(--border); cursor: pointer; user-select: none; }
+		.card-head:hover { background: #d6e4f0; }
+		.card-body { padding: 1rem 1.25rem; }
+		.card-body ul { margin: 0.5rem 0; padding-left: 1.25rem; }
+		.card-body li { margin: 0.35rem 0; }
+		.card-body p { margin: 0.5rem 0; }
+		table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.95rem; }
+		th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+		th { background: var(--primary-light); color: var(--primary); font-weight: 600; }
+		.highlight { background: #fff8e6; padding: 0.5rem 0.75rem; border-radius: 4px; border-left: 4px solid #e6a800; margin: 0.75rem 0; }
+		.my-summary { background: linear-gradient(135deg, #003366 0%, #004080 100%); color: white; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; }
+		.my-summary h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; }
+		.my-summary .join-date { font-size: 1.1rem; margin-bottom: 0.75rem; }
+		.my-summary table { color: white; border-color: rgba(255,255,255,0.25); }
+		.my-summary th { background: rgba(255,255,255,0.15); }
+		.my-summary td { border-color: rgba(255,255,255,0.2); }
+		small { color: #666; font-size: 0.875rem; }
+		details { margin: 0.5rem 0; }
+		details summary { cursor: pointer; font-weight: 600; color: var(--primary); padding: 0.35rem 0; }
+		.sub { font-size: 0.9rem; color: #555; margin-top: 0.25rem; }
+		.form-row { margin-bottom: 0.75rem; }
+		.form-row label { display: block; font-weight: 600; margin-bottom: 0.25rem; color: var(--primary); }
+		.form-row input, .form-row select { padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; width: 100%; max-width: 280px; }
+		.join-date-row .join-date-input { max-width: 220px; min-width: 180px; font-size: 1rem; }
+		.join-date-card { background: #e8f4fc; border: 2px solid var(--primary); border-radius: 8px; padding: 1rem 1.25rem; margin-bottom: 1.25rem; }
+		.join-date-card label { display: block; font-weight: 700; color: var(--primary); margin-bottom: 0.5rem; font-size: 1rem; }
+		.join-date-card input[type="date"] { padding: 0.6rem 0.75rem; font-size: 1.05rem; min-height: 44px; border: 2px solid var(--primary); border-radius: 6px; background: #fff; cursor: pointer; }
+		.join-date-card .sub { margin-top: 0.35rem; margin-bottom: 0; }
+		.btn { padding: 0.5rem 1rem; border: none; border-radius: 4px; cursor: pointer; font-weight: 600; }
+		.btn-primary { background: var(--primary); color: white; }
+		.btn-primary:hover { background: #002244; }
+		.btn-danger { background: #c00; color: white; font-size: 0.85rem; padding: 0.25rem 0.5rem; }
+		.btn-danger:hover { background: #a00; }
+		.balance-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 1rem; margin-top: 0.5rem; }
+		@media (max-width: 600px) { .balance-grid { grid-template-columns: 1fr; } }
+		.balance-box { background: white; border: 2px solid var(--primary-light); border-radius: 8px; padding: 1rem; text-align: center; }
+		.balance-box h3 { margin: 0 0 0.5rem 0; font-size: 1rem; color: var(--primary); }
+		.balance-box .balance-total { font-size: 0.85rem; color: #555; margin-bottom: 0.75rem; }
+		.balance-box-inner { display: grid; grid-template-columns: 1fr 1fr; gap: 0.5rem; margin-top: 0.5rem; }
+		.balance-cell { background: var(--primary-light); border-radius: 6px; padding: 0.6rem 0.5rem; }
+		.balance-cell .label { font-size: 0.75rem; font-weight: 600; color: var(--primary); text-transform: uppercase; letter-spacing: 0.02em; margin-bottom: 0.25rem; }
+		.balance-cell .value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
+		.balance-cell.remain .value { color: #0a5f0a; }
+		#leaveList tbody tr:hover { background: #f5f5f5; }
+		.join-date-top { background: var(--primary); color: white; padding: 1rem 1.5rem; margin: 0; }
+		.join-date-top .container { display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+		.join-date-top label { margin: 0; font-weight: 600; font-size: 1rem; }
+		.join-date-top input[type="date"] { padding: 0.5rem 0.75rem; font-size: 1rem; min-height: 42px; border: none; border-radius: 6px; background: #fff; color: var(--text); cursor: pointer; }
+	</style>
+</head>
+<body>
+	<!-- 1. Very first: Join date picker -->
+	<div class="join-date-top">
+		<div class="container">
+			<label for="joinDateInput">Join date</label>
+			<input type="date" id="joinDateInput" class="join-date-input" required aria-label="Select your joining date">
+		</div>
+	</div>
+
+	<header>
+		<div class="container">
+			<h1>Leave Logs</h1>
+		</div>
+	</header>
+
+	<div class="container">
+		<!-- 2. Leave summary (period) -->
+		<section class="card">
+			<div class="card-head">Leave summary (<span id="currentYear"></span>)</div>
+			<div class="card-body">
+				<p class="sub">Period: <select id="yearSelect"></select> <span id="periodRange" class="sub"></span></p>
+				<div class="balance-grid">
+					<div class="balance-box">
+						<h3>Annual Leave</h3>
+						<div class="balance-total">Total: <span id="annualEntitle">—</span> days</div>
+						<div class="balance-box-inner">
+							<div class="balance-cell">
+								<div class="label">Used</div>
+								<div class="value" id="annualUsed">0</div>
+							</div>
+							<div class="balance-cell remain">
+								<div class="label">Remain</div>
+								<div class="value" id="annualRemain">—</div>
+							</div>
+						</div>
+					</div>
+					<div class="balance-box">
+						<h3>Casual Leave</h3>
+						<div class="balance-total">Total: <span id="casualEntitle">—</span> <span id="casualUnit">days</span></div>
+						<div class="balance-box-inner">
+							<div class="balance-cell">
+								<div class="label">Used</div>
+								<div class="value" id="casualUsed">0</div>
+							</div>
+							<div class="balance-cell remain">
+								<div class="label">Remain</div>
+								<div class="value" id="casualRemain">—</div>
+							</div>
+						</div>
+					</div>
+				</div>
+			</div>
+		</section>
+
+		<!-- 2. Leave Logs -->
+		<section class="card">
+			<div class="card-head">Leave Logs</div>
+			<div class="card-body">
+				<form id="leaveForm">
+					<div class="form-row">
+						<label for="leaveType">Leave type</label>
+						<select id="leaveType" required>
+							<option value="annual">Annual Leave</option>
+							<option value="casual" selected>Casual Leave</option>
+						</select>
+					</div>
+					<div class="form-row">
+						<label for="leaveDate">Leave date</label>
+						<input type="date" id="leaveDate" required>
+					</div>
+					<div class="form-row">
+						<label>Full / Half / Covered</label>
+						<select id="fullOrHalf" required>
+							<option value="full">Full day</option>
+							<option value="half">Half day</option>
+							<option value="covered">Covered</option>
+						</select>
+					</div>
+					<div class="form-row">
+						<label for="notes">Notes (optional)</label>
+						<input type="text" id="notes" placeholder="e.g. Personal">
+					</div>
+					<div class="form-row">
+						<button type="submit" class="btn btn-primary">Add leave</button>
+					</div>
+				</form>
+				
+
+				<hr style="margin: 1.25rem 0; border: none; border-top: 1px solid var(--border);">
+
+				<p><strong>My leave entries (this year)</strong></p>
+				<table id="leaveList">
+					<thead>
+						<tr>
+							<th>Date</th>
+							<th>Type</th>
+							<th>Full / Half</th>
+							<th>Count</th>
+							<th>Notes</th>
+							<th></th>
+						</tr>
+					</thead>
+					<tbody id="leaveListBody">
+						<tr><td colspan="6" class="sub">No leave recorded yet.</td></tr>
+					</tbody>
+				</table>
+				<p class="sub">Shown: leaves for period <span id="yearLabel"></span></p>
+			</div>
+		</section>
+
+		<!-- 3. My Leave Summary (entitlement table - customized by join date) -->
+		<section class="card my-summary">
+			<h2>My Leave Summary</h2>
+			<p class="join-date"><strong>Joining date:</strong> <span id="summaryJoinDate"></span></p>
+			<table>
+				<thead>
+					<tr>
+						<th>Year / Period</th>
+						<th>Entitlement</th>
+					</tr>
+				</thead>
+				<tbody id="entitlementTableBody">
+					<!-- Filled by renderEntitlementTable() -->
+				</tbody>
+			</table>
+			<p class="sub">Other leave types (Duty, Lieu, Maternity, Leave to Vote, No Pay, Extension, Overstay, Quarantine) are as per policy below.</p>
+		</section>
+
+		<div class="card">
+			<div class="card-head">1. Annual Leave</div>
+			<div class="card-body">
+				<p><strong>1.1</strong> For each full calendar year (1 Jan–31 Dec) in continuous employment, an employee is entitled to <strong>14 days</strong> Annual Leave (with pay) from the following year.</p>
+				<p><strong>1.2</strong> First year of employment — paid annual leave in the following/preceding year:</p>
+				<table>
+					<tr><th>If employment commenced</th><th>Days</th></tr>
+					<tr><td>On or after 1 Jan but before 1 Apr</td><td>14 days</td></tr>
+					<tr><td>On or after 1 Apr but before 1 Jul</td><td>10 days</td></tr>
+					<tr><td>On or after 1 Jul but before 1 Oct</td><td>07 days</td></tr>
+					<tr><td>On or after 1 Oct</td><td>04 days</td></tr>
+				</table>
+				<p><strong>1.3</strong> No Annual Leave during Training or Probation.</p>
+				<p><strong>1.4</strong> Balance annual leave with prior consent of Immediate Supervisor; approved by HOD; availed at mutually convenient times.</p>
+				<p><strong>1.5</strong> Apply at least <strong>07 days in advance</strong> to Immediate Supervisor (except emergency).</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">2. Casual Leave</div>
+			<div class="card-body">
+				<p><strong>2.1</strong> <strong>07 days</strong> per calendar year (1 Jan–31 Dec) for personal matters, ill-health, or other reasonable grounds.</p>
+				<p><strong>2.2</strong> <strong>Probation / first year:</strong> 1 day for each completed 2 calendar months (½ day per month for first 12 months).</p>
+				<p><strong>2.3</strong> From the next calendar year, full 7 days from 1 January.</p>
+				<p><strong>2.4</strong> Procedure: Approve in advance with Supervisor; in emergency, intimate same day (e.g. phone call).</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">3. Duty Leave</div>
+			<div class="card-body">
+				<p><strong>3.1</strong> For representing the company in official operations, sports, or other authorised activities. Granted in advance; requires Superior and HOD approval.</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">4. Lieu Leave</div>
+			<div class="card-body">
+				<p><strong>4.1</strong> When a statutory holiday falls on Sunday, Poya day or another statutory holiday, an additional holiday may apply (Shop &amp; Office Employees’ Act).</p>
+				<p><strong>4.2</strong> Eligibility: ≥8 hours worked = 1 day lieu; 4½–8 hours = ½ day. Use within same month or next month if last day of month.</p>
+				<p><strong>4.3</strong> Carry-forward to next month only with Board of Directors’ prior approval; otherwise Immediate Supervisor’s approval for carry-forward.</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">5. Maternity Leave</div>
+			<div class="card-body">
+				<p><strong>5.1</strong> No qualifying period; entitlement from joining; applies whether infant is dead or alive.</p>
+				<p><strong>5.2</strong> <strong>84 working days</strong> with pay (no limit on number of children).</p>
+				<p><strong>5.3</strong> 14 days pre-confinement + 70 days post-confinement. Unused pre-confinement may be taken post-confinement (5.4).</p>
+				<p><strong>5.5</strong> Still-born or aborted fetus: 42 working days post-confinement.</p>
+				<p><strong>5.6</strong> Excludes weekends and Public/Full Moon Poya holidays.</p>
+				<p><strong>5.7</strong> HR to send letter (register post) with leave period on intimation of birth.</p>
+				<p><strong>5.8</strong> Nursing intervals for child under 1 year: 2 intervals (1 hr each if no crèche; 30 min each if crèche provided); within 9-hour day; in addition to meal/rest.</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">6. Leave to Vote at Elections</div>
+			<div class="card-body">
+				<p><strong>6.1</strong> Paid leave of not less than 4 hours to vote (Parliamentary, Presidential, Provincial Council). Full day may be granted for distant voters as per law.</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">7. No Pay (Unauthorized) / Authorized No Pay Absence</div>
+			<div class="card-body">
+				<p><strong>7.1</strong> Unauthorized absence: no pay for that period + disciplinary action (warning, vacated post, suspension, termination). Inform by letter, telegram, email, phone or SMS before scheduled start.</p>
+				<p><strong>7.2</strong> Authorized No Pay at Board’s discretion.</p>
+				<p><strong>7.3</strong> Approved No Pay counts as service for calculation purposes.</p>
+				<p><strong>7.4</strong> Apply for leave immediately on return if on extended or Authorized No Pay.</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">8. Extension of Leave</div>
+			<div class="card-body">
+				<p><strong>8.1</strong> Only in exceptional circumstances at Supervisor’s discretion. Employee must communicate in advance before expiry of granted leave with reason.</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">9. Overstay of Leave</div>
+			<div class="card-body">
+				<p><strong>9.1</strong> Absence/overstay without intimation = Unauthorized Absence.</p>
+				<p><strong>9.2</strong> Company may treat as approved leave if employee has balance (at discretion).</p>
+				<p><strong>9.3</strong> Unauthorized leave: salary deduction (loss of pay), loss of benefits/allowances, disciplinary action.</p>
+				<p><strong>9.4</strong> Absent beyond original/extended leave without intimation for <strong>3 consecutive days</strong> → deemed to have vacated post; Board may take action.</p>
+			</div>
+		</div>
+
+		<div class="card">
+			<div class="card-head">10. Quarantine Leave</div>
+			<div class="card-body">
+				<p><strong>10.1</strong> For employees ordered to quarantine by PHI/medical officer/authority; in addition to other leave.</p>
+				<p><strong>10.2</strong> If tested positive for Covid-19 → use sick leave.</p>
+				<p><strong>10.3</strong> Quarantine + sick: sick leave until well; then quarantine leave again if order still in force.</p>
+				<p><strong>10.4</strong> Full-time employee under quarantine (not Covid-positive): full wage for quarantine period.</p>
+				<p><strong>10.5</strong> Only PHI/medical officer/public authority can impose quarantine. Provide quarantine certificate and PCR/RAT (if requested) after quarantine.</p>
+				<p><strong>10.6</strong> Other quarantine (e.g. travel): use vacation/floating holiday or leave balances.</p>
+				<p><strong>10.7</strong> Procedure: (a) Present medical certificate/PCR or RAT after quarantine. (b) 1st period Covid-19: 14 days company. (c) 2nd period: 7 days company + 7 days from Annual/Casual. (d) 3rd period: 14 days from Annual/Casual.</p>
+			</div>
+		</div>
+
+		<p style="text-align:center; color:#666; font-size:0.875rem; margin-top:1.5rem;">Delivergate Pvt Ltd — Leave Policy (Policy No. 01)</p>
+	</div>
+
+		<script>
+		const STORAGE_KEY = 'delivergate_leave_entries';
+		const STORAGE_KEY_JOIN = 'delivergate_join_date';
+		const DEFAULT_JOIN = '2025-03-03';
+
+		function getJoinDate() {
+			const s = localStorage.getItem(STORAGE_KEY_JOIN);
+			const str = (s && s.length >= 10) ? s : DEFAULT_JOIN;
+			return new Date(str);
+		}
+		function setJoinDate(dateStr) {
+			if (dateStr && dateStr.length >= 10) localStorage.setItem(STORAGE_KEY_JOIN, dateStr);
+		}
+
+		// Leave period: join-day join-month Y – day before same date Y+1 (e.g. 07 Mar 2026 – 06 Mar 2027)
+		function getPeriodYear(dateStr) {
+			const d = new Date(dateStr);
+			if (isNaN(d.getTime())) return null;
+			const join = getJoinDate();
+			const joinNorm = new Date(join.getFullYear(), join.getMonth(), join.getDate());
+			if (d < joinNorm) return null;
+			let periodStart = new Date(joinNorm.getFullYear(), joinNorm.getMonth(), joinNorm.getDate());
+			for (let n = 0; n < 50; n++) {
+				const periodEnd = new Date(periodStart.getFullYear() + 1, periodStart.getMonth(), periodStart.getDate());
+				periodEnd.setDate(periodEnd.getDate() - 1);
+				if (d >= periodStart && d <= periodEnd) return periodStart.getFullYear();
+				periodStart = new Date(periodStart.getFullYear() + 1, periodStart.getMonth(), periodStart.getDate());
+			}
+			return null;
+		}
+
+		function getPeriodLabel(year) {
+			year = parseInt(year, 10);
+			const join = getJoinDate();
+			const start = new Date(year, join.getMonth(), join.getDate());
+			const end = new Date(year + 1, join.getMonth(), join.getDate());
+			end.setDate(end.getDate() - 1);
+			const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+			const fmt = function (d) {
+				const day = (d.getDate() < 10 ? '0' : '') + d.getDate();
+				return d.getFullYear() + ' ' + months[d.getMonth()] + ' ' + day;
+			};
+			return fmt(start) + ' – ' + fmt(end);
+		}
+
+		function getPeriodStart(year) {
+			year = parseInt(year, 10);
+			const join = getJoinDate();
+			return new Date(year, join.getMonth(), join.getDate());
+		}
+
+		function formatDateLong(d) {
+			const months = ['January','February','March','April','May','June','July','August','September','October','November','December'];
+			const day = (d.getDate() < 10 ? '0' : '') + d.getDate();
+			return d.getFullYear() + ' ' + months[d.getMonth()] + ' ' + day;
+		}
+
+		function renderEntitlementTable() {
+			const join = getJoinDate();
+			const joinYear = join.getFullYear();
+			const start1 = getPeriodStart(joinYear);
+			const end2 = getPeriodEnd(joinYear + 1);
+			const start3 = getPeriodStart(joinYear + 2);
+			document.getElementById('summaryJoinDate').textContent = formatDateLong(join);
+			const tbody = document.getElementById('entitlementTableBody');
+			tbody.innerHTML =
+				'<tr><td>' + getPeriodLabel(joinYear) + '</td><td>Casual leave 6 (12 half-days). No annual leave.</td></tr>' +
+				'<tr><td>' + getPeriodLabel(joinYear + 1) + '</td><td>Casual leave 6 (12 half-days).</td></tr>' +
+				'<tr><td>' + formatDateLong(start3) + ' onwards</td><td>Annual leave 14 per year. Casual leave 7 per year.</td></tr>';
+		}
+
+		function getPeriodEnd(year) {
+			const start = getPeriodStart(year);
+			const end = new Date(start.getFullYear() + 1, start.getMonth(), start.getDate());
+			end.setDate(end.getDate() - 1);
+			return end;
+		}
+
+		// Casual accrues 1 half-day per month from period start (max 12 half-days). Returns 0 for period 2026.
+		function getCasualAccruedHalfDays(periodYear, asOfDate) {
+			periodYear = parseInt(periodYear, 10);
+			const joinYear = getJoinDate().getFullYear();
+			if (periodYear <= joinYear) return 12;
+			if (periodYear === joinYear + 1) return 0;
+			const start = getPeriodStart(periodYear);
+			const end = getPeriodEnd(periodYear);
+			const asOf = new Date(asOfDate);
+			if (asOf < start) return 0;
+			const cap = asOf > end ? end : asOf;
+			let months = (cap.getFullYear() - start.getFullYear()) * 12 + (cap.getMonth() - start.getMonth());
+			if (cap.getDate() < start.getDate()) months--;
+			return Math.min(12, Math.max(0, months));
+		}
+
+		function getEntitlement(year, asOfDate) {
+			const y = parseInt(year, 10);
+			const joinYear = getJoinDate().getFullYear();
+			const asOf = asOfDate ? new Date(asOfDate) : new Date();
+			const periodEnd = getPeriodEnd(year);
+			const cap = asOf > periodEnd ? periodEnd : asOf;
+			if (y === joinYear) {
+				return { annual: 0, casual: 6, casualHalfDays: 12 };
+			}
+			if (y === joinYear + 1) {
+				return { annual: 0, casual: 0, casualHalfDays: 0 };
+			}
+			const accrued = getCasualAccruedHalfDays(y, cap);
+			return { annual: 14, casual: null, casualHalfDays: accrued };
+		}
+
+		function entryYear(entry) {
+			const d = entry.date || entry.startDate;
+			return d ? getPeriodYear(d) : null;
+		}
+
+		function entryDays(entry) {
+			if (entry.fullOrHalf === 'covered') return 0;
+			if (entry.fullOrHalf !== undefined) return entry.fullOrHalf === 'full' ? 1 : 0.5;
+			return entry.days != null ? entry.days : 0;
+		}
+
+		function entryHalfDays(entry) {
+			if (entry.fullOrHalf === 'covered') return 0;
+			if (entry.fullOrHalf !== undefined) return entry.fullOrHalf === 'full' ? 2 : 1;
+			return (entry.days != null ? entry.days : 0) * 2;
+		}
+
+		function getEntries() {
+			try {
+				const raw = localStorage.getItem(STORAGE_KEY);
+				return raw ? JSON.parse(raw) : [];
+			} catch (e) { return []; }
+		}
+
+		function setEntries(arr) {
+			localStorage.setItem(STORAGE_KEY, JSON.stringify(arr));
+		}
+
+		function workDaysBetween(start, end) {
+			const s = new Date(start);
+			const e = new Date(end);
+			if (s > e) return 0;
+			let days = 0;
+			const d = new Date(s);
+			while (d <= e) {
+				const day = d.getDay();
+				if (day !== 0 && day !== 6) days++;
+				d.setDate(d.getDate() + 1);
+			}
+			return days;
+		}
+
+		function renderBalance(year) {
+			year = parseInt(year, 10);
+			const ent = getEntitlement(year);
+			const entries = getEntries().filter(function (x) { return entryYear(x) === year; });
+			let annualUsed = 0, casualUsed = 0, casualUsedHalf = 0;
+			entries.forEach(function (e) {
+				if (e.type === 'annual') annualUsed += entryDays(e);
+				else if (e.type === 'casual') {
+					casualUsed += entryDays(e);
+					casualUsedHalf += entryHalfDays(e);
+				}
+			});
+			document.getElementById('currentYear').textContent = year;
+			const periodRange = document.getElementById('periodRange');
+			if (periodRange) periodRange.textContent = getPeriodLabel(year);
+			const yLabel = document.getElementById('yearLabel');
+			if (yLabel) yLabel.textContent = getPeriodLabel(year);
+			document.getElementById('annualEntitle').textContent = ent.annual;
+			document.getElementById('annualUsed').textContent = annualUsed;
+			document.getElementById('annualRemain').textContent = Math.max(0, ent.annual - annualUsed);
+			if (ent.casualHalfDays != null) {
+				document.getElementById('casualEntitle').textContent = ent.casualHalfDays;
+				document.getElementById('casualUnit').textContent = 'half-days';
+				document.getElementById('casualUsed').textContent = casualUsedHalf;
+				document.getElementById('casualRemain').textContent = Math.max(0, ent.casualHalfDays - casualUsedHalf);
+			} else {
+				document.getElementById('casualEntitle').textContent = ent.casual;
+				document.getElementById('casualUnit').textContent = 'days';
+				document.getElementById('casualUsed').textContent = casualUsed;
+				document.getElementById('casualRemain').textContent = Math.max(0, ent.casual - casualUsed);
+			}
+		}
+
+		function renderList(year) {
+			year = parseInt(year, 10);
+			const entries = getEntries()
+				.filter(function (x) { return entryYear(x) === year; })
+				.sort(function (a, b) {
+					const da = a.date || a.startDate;
+					const db = b.date || b.startDate;
+					return new Date(db) - new Date(da);
+				});
+			const tbody = document.getElementById('leaveListBody');
+			if (entries.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="6" class="sub">No leave recorded for this period.</td></tr>';
+				return;
+			}
+			tbody.innerHTML = entries.map(function (e) {
+				const typeLabel = e.type === 'annual' ? 'Annual' : 'Casual';
+				const dateStr = e.date || e.startDate;
+				const fullHalf = e.fullOrHalf !== undefined ? (e.fullOrHalf === 'full' ? 'Full' : e.fullOrHalf === 'half' ? 'Half' : 'Covered') : 'Range';
+				const countStr = e.fullOrHalf === 'covered' ? '0' : e.fullOrHalf === 'full' ? '1' : e.fullOrHalf === 'half' ? '0.5' : (e.days != null ? e.days : 0);
+				return '<tr data-id="' + e.id + '">' +
+					'<td>' + dateStr + '</td>' +
+					'<td>' + typeLabel + '</td>' +
+					'<td>' + fullHalf + '</td>' +
+					'<td>' + countStr + '</td>' +
+					'<td>' + (e.notes || '—') + '</td>' +
+					'<td><button type="button" class="btn btn-danger delete-btn">Delete</button></td></tr>';
+			}).join('');
+			tbody.querySelectorAll('.delete-btn').forEach(function (btn) {
+				btn.onclick = function () {
+					const row = btn.closest('tr');
+					const id = row.getAttribute('data-id');
+					let arr = getEntries();
+					arr = arr.filter(function (x) { return x.id !== id; });
+					setEntries(arr);
+					renderList(year);
+					renderBalance(year);
+				};
+			});
+		}
+
+		function initYearSelect() {
+			const today = new Date().toISOString().slice(0, 10);
+			const currentPeriod = getPeriodYear(today);
+			const current = new Date().getFullYear();
+			const joinYear = getJoinDate().getFullYear();
+			const sel = document.getElementById('yearSelect');
+			for (let y = joinYear; y <= current + 1; y++) {
+				const opt = document.createElement('option');
+				opt.value = y;
+				opt.textContent = getPeriodLabel(y);
+				if (y === (currentPeriod != null ? currentPeriod : current)) opt.selected = true;
+				sel.appendChild(opt);
+			}
+			sel.onchange = function () {
+				const y = sel.value;
+				renderBalance(y);
+				renderList(y);
+			};
+		}
+
+		document.getElementById('leaveForm').onsubmit = function (ev) {
+			ev.preventDefault();
+			const type = document.getElementById('leaveType').value;
+			const leaveDate = document.getElementById('leaveDate').value;
+			const fullOrHalf = document.getElementById('fullOrHalf').value;
+			const notes = document.getElementById('notes').value.trim();
+			const days = fullOrHalf === 'covered' ? 0 : (fullOrHalf === 'full' ? 1 : 0.5);
+			const year = getPeriodYear(leaveDate);
+			if (year == null) {
+				const j = getJoinDate();
+				const jStr = (j.getDate() < 10 ? '0' : '') + j.getDate() + ' ' + ['Jan','Feb','Mar','Apr','May','Jun','Jul','Aug','Sep','Oct','Nov','Dec'][j.getMonth()] + ' ' + j.getFullYear();
+				alert('Leave date must be on or after joining date (' + jStr + ').');
+				return;
+			}
+			const ent = getEntitlement(year, leaveDate);
+			const entries = getEntries();
+			const yearEntries = entries.filter(function (x) { return entryYear(x) === year; });
+			let usedAnnual = 0, usedCasual = 0, usedCasualHalf = 0;
+			yearEntries.forEach(function (x) {
+				if (x.type === 'annual') usedAnnual += entryDays(x);
+				else if (x.type === 'casual') {
+					usedCasual += entryDays(x);
+					usedCasualHalf += entryHalfDays(x);
+				}
+			});
+			if (type === 'annual' && fullOrHalf !== 'covered' && usedAnnual + days > ent.annual) {
+				alert('Annual leave for ' + year + ': only ' + (ent.annual - usedAnnual) + ' days remaining.');
+				return;
+			}
+			if (type === 'casual' && fullOrHalf !== 'covered') {
+				if (ent.casualHalfDays != null) {
+					const addHalf = fullOrHalf === 'full' ? 2 : 1;
+					if (usedCasualHalf + addHalf > ent.casualHalfDays) {
+						alert('Casual leave for ' + year + ': only ' + (ent.casualHalfDays - usedCasualHalf) + ' half-days remaining.');
+						return;
+					}
+				} else if (usedCasual + days > ent.casual) {
+					alert('Casual leave for ' + year + ': only ' + (ent.casual - usedCasual) + ' days remaining.');
+					return;
+				}
+			}
+			const id = 'id_' + Date.now();
+			entries.push({ id: id, type: type, date: leaveDate, fullOrHalf: fullOrHalf, days: days, notes: notes });
+			setEntries(entries);
+			document.getElementById('leaveForm').reset();
+			const y = document.getElementById('yearSelect').value;
+			renderBalance(y);
+			renderList(y);
+		};
+
+		function initJoinDateInput() {
+			const inp = document.getElementById('joinDateInput');
+			const j = getJoinDate();
+			inp.value = j.getFullYear() + '-' + String(j.getMonth() + 1).padStart(2, '0') + '-' + String(j.getDate()).padStart(2, '0');
+			inp.onchange = function () {
+				const v = inp.value;
+				if (v && v.length >= 10) {
+					setJoinDate(v);
+					renderEntitlementTable();
+					const sel = document.getElementById('yearSelect');
+					sel.innerHTML = '';
+					initYearSelect();
+					const y = document.getElementById('yearSelect').value;
+					renderBalance(y);
+					renderList(y);
+				}
+			};
+		}
+
+		initJoinDateInput();
+		renderEntitlementTable();
+		initYearSelect();
+		const y = document.getElementById('yearSelect').value;
+		renderBalance(y);
+		renderList(y);
+	</script>
+</body>
+</html>
