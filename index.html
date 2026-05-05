@@ -357,7 +357,13 @@
 			tbody.innerHTML = '<tr><td colspan="6" class="sub">No leave recorded for this period.</td></tr>';
 			return;
 		}
-		tbody.innerHTML = entries.map(e => {
+		// Newest leave date first (ISO yyyy-mm-dd compares correctly as strings)
+		const sorted = entries.slice().sort((a, b) => {
+			const byDate = (b.date || '').localeCompare(a.date || '');
+			if (byDate !== 0) return byDate;
+			return String(b.id || '').localeCompare(String(a.id || ''));
+		});
+		tbody.innerHTML = sorted.map(e => {
 			const typeLabel = e.type === 'annual' ? 'Annual' : 'Casual';
 			const fullHalf = e.full_or_half === 'full' ? 'Full' : e.full_or_half === 'half' ? 'Half' : 'Covered';
 			const hd = e.full_or_half === 'covered' ? '0' : e.full_or_half === 'full' ? '2' : '1';
