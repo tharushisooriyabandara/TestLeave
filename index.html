@@ -227,8 +227,14 @@
 	function fmt(d) {
 		return d.getFullYear() + ' ' + MONTHS[d.getMonth()] + ' ' + String(d.getDate()).padStart(2,'0');
 	}
+	function fmtYmd(d) {
+		return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
+	}
 	function getPeriodLabel(year) {
 		return fmt(getPeriodStart(year)) + ' – ' + fmt(getPeriodEnd(year));
+	}
+	function getPeriodRangeYmd(year) {
+		return fmtYmd(getPeriodStart(year)) + ' - ' + fmtYmd(getPeriodEnd(year));
 	}
 	function getPeriodYear(dateStr) {
 		const d = new Date(dateStr);
@@ -432,17 +438,18 @@
 
 	// ── Year select ────────────────────────────────────────────────
 	function initYearSelect() {
-		const today = new Date().toISOString().slice(0,10);
-		const currentPeriod = getPeriodYear(today);
 		const current = new Date().getFullYear();
 		const joinYear = getJoinDate().getFullYear();
+		// Default to the first full future period after the join year.
+		// Example: join 2025/03/03 -> default select period starting 2026/03/03.
+		const defaultYear = Math.min(joinYear + 1, current + 1);
 		const sel = document.getElementById('yearSelect');
 		sel.innerHTML = '';
 		for (let y = joinYear; y <= current+1; y++) {
 			const opt = document.createElement('option');
 			opt.value = y;
-			opt.textContent = getPeriodLabel(y);
-			if (y === (currentPeriod != null ? currentPeriod : current)) opt.selected = true;
+			opt.textContent = getPeriodRangeYmd(y);
+			if (y === defaultYear) opt.selected = true;
 			sel.appendChild(opt);
 		}
 		sel.onchange = refreshTable;
