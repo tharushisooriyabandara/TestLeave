@@ -85,7 +85,12 @@
 	<section class="card">
 		<div class="card-head">Leave summary — <span id="periodRange">—</span></div>
 		<div class="card-body">
-			<p class="sub">Period: <select id="yearSelect"></select></p>
+			<p class="sub">
+				<label for="periodFromInput">From:</label>
+				<input type="date" id="periodFromInput">
+				<label for="periodToInput" style="margin-left:0.75rem;">To:</label>
+				<input type="date" id="periodToInput">
+			</p>
 			<div class="balance-grid">
 				<div class="balance-box">
 					<h3>Annual Leave</h3>
@@ -152,7 +157,6 @@
 					<tr><td colspan="6" class="sub">Enter your name/ID above to load records.</td></tr>
 				</tbody>
 			</table>
-			<p class="sub">Period: <span id="yearLabel">—</span></p>
 		</div>
 	</section>
 
@@ -230,6 +234,9 @@
 	function fmtYmd(d) {
 		return d.getFullYear() + '/' + String(d.getMonth()+1).padStart(2,'0') + '/' + String(d.getDate()).padStart(2,'0');
 	}
+	function fmtIsoLocal(d) {
+		return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
+	}
 	function getPeriodLabel(year) {
 		return fmt(getPeriodStart(year)) + ' – ' + fmt(getPeriodEnd(year));
 	}
@@ -292,11 +299,20 @@
 	async function fetchEntries(year) {
 		const userId = getUserId();
 		if (!userId) return [];
-		const ps = getPeriodStart(year).toISOString().slice(0,10);
-		const pe = getPeriodEnd(year).toISOString().slice(0,10);
+		const ps = fmtIsoLocal(getPeriodStart(year));
+		const pe = fmtIsoLocal(getPeriodEnd(year));
 		return await sbFetch(
 			'/rest/v1/leave_entries?user_id=eq.' + encodeURIComponent(userId) +
 			'&date=gte.' + ps + '&date=lte.' + pe + '&order=date.desc',
+			{ method: 'GET' }
+		);
+	}
+	async function fetchEntriesByRange(fromDate, toDate) {
+		const userId = getUserId();
+		if (!userId) return [];
+		return await sbFetch(
+			'/rest/v1/leave_entries?user_id=eq.' + encodeURIComponent(userId) +
+			'&date=gte.' + fromDate + '&date=lte.' + toDate + '&order=date.desc',
 			{ method: 'GET' }
 		);
 	}
@@ -317,16 +333,21 @@
 	}
 
 	// ── Render balance ─────────────────────────────────────────────
-	function renderBalance(year, entries) {
-		const ent = getEntitlement(year);
+	function renderBalance(fromDate, toDate, entries) {
+		const entYear = getPeriodYear(fromDate);
+		const ent = getEntitlement(entYear == null ? new Date(fromDate).getFullYear() : entYear);
 		let annualUsed = 0, casualUsedHalf = 0;
 		(entries || []).forEach(e => {
 			if (e.full_or_half === 'covered') return;
 			if (e.type === 'annual') annualUsed += (e.full_or_half === 'full' ? 1 : 0.5);
 			else if (e.type === 'casual') casualUsedHalf += (e.full_or_half === 'full' ? 2 : 1);
 		});
-		document.getElementById('periodRange').textContent = getPeriodLabel(year);
-		document.getElementById('yearLabel').textContent = getPeriodLabel(year);
+		const rangeYmd = fromDate.replace(/-/g, '/') + ' - ' + toDate.replace(/-/g, '/');
+		document.getElementById('periodRange').textContent = rangeYmd;
+		const prd = document.getElementById('periodRangeDisplay');
+		if (prd) prd.textContent = rangeYmd;
+		const yl = document.getElementById('yearLabel');
+		if (yl) yl.textContent = rangeYmd;
 		document.getElementById('annualEntitle').textContent = ent.annual;
 		document.getElementById('annualUsed').textContent = annualUsed;
 		document.getElementById('annualRemain').textContent = Math.max(0, ent.annual - annualUsed);
@@ -357,7 +378,7 @@
 	}
 
 	// ── Render list ────────────────────────────────────────────────
-	function renderList(year, entries) {
+	function renderList(entries) {
 		const tbody = document.getElementById('leaveListBody');
 		if (!entries || entries.length === 0) {
 			tbody.innerHTML = '<tr><td colspan="6" class="sub">No leave recorded for this period.</td></tr>';
@@ -419,40 +440,41 @@
 
 	// ── Refresh ────────────────────────────────────────────────────
 	async function refreshTable() {
-		const year = parseInt(document.getElementById('yearSelect').value);
+		const fromDate = document.getElementById('periodFromInput').value;
+		const toDate = document.getElementById('periodToInput').value;
+		if (!fromDate || !toDate) return;
+		if (fromDate > toDate) {
+			showToast('Invalid period: "From" date must be before "To" date.', true);
+			return;
+		}
 		if (!getUserId()) {
 			document.getElementById('leaveListBody').innerHTML = '<tr><td colspan="6" class="sub">Enter your name/ID above to load records.</td></tr>';
-			renderBalance(year, []);
+			renderBalance(fromDate, toDate, []);
 			return;
 		}
 		document.getElementById('loadingMsg').textContent = 'Loading…';
 		try {
-			const entries = await fetchEntries(year);
-			renderList(year, entries);
-			renderBalance(year, entries);
+			const entries = await fetchEntriesByRange(fromDate, toDate);
+			renderList(entries);
+			renderBalance(fromDate, toDate, entries);
 		} catch(err) {
 			showToast('Load failed: ' + err.message, true);
 		}
 		document.getElementById('loadingMsg').textContent = '';
 	}
 
-	// ── Year select ────────────────────────────────────────────────
-	function initYearSelect() {
-		const current = new Date().getFullYear();
+	// ── Period range inputs ────────────────────────────────────────
+	function initRangeInputs() {
 		const joinYear = getJoinDate().getFullYear();
-		// Default to the first full future period after the join year.
-		// Example: join 2025/03/03 -> default select period starting 2026/03/03.
-		const defaultYear = Math.min(joinYear + 1, current + 1);
-		const sel = document.getElementById('yearSelect');
-		sel.innerHTML = '';
-		for (let y = joinYear; y <= current+1; y++) {
-			const opt = document.createElement('option');
-			opt.value = y;
-			opt.textContent = getPeriodRangeYmd(y);
-			if (y === defaultYear) opt.selected = true;
-			sel.appendChild(opt);
-		}
-		sel.onchange = refreshTable;
+		// Always default to the second period from join date (joinYear + 1).
+		// Example: join 2025/03/03 => 2026/03/03 - 2027/03/02.
+		const defaultYear = joinYear + 1;
+		const fromInp = document.getElementById('periodFromInput');
+		const toInp = document.getElementById('periodToInput');
+		fromInp.value = fmtIsoLocal(getPeriodStart(defaultYear));
+		toInp.value = fmtIsoLocal(getPeriodEnd(defaultYear));
+		fromInp.onchange = refreshTable;
+		toInp.onchange = refreshTable;
 	}
 
 	document.getElementById('cancelEditBtn').onclick = function() {
@@ -520,7 +542,7 @@
 					date: leaveDate,
 					full_or_half: fullOrHalf,
 					notes: notes,
-					join_date: getJoinDate().toISOString().slice(0,10)
+					join_date: fmtIsoLocal(getJoinDate())
 				});
 				document.getElementById('leaveForm').reset();
 				clearEditMode(false);
@@ -535,7 +557,7 @@
 					date: leaveDate,
 					full_or_half: fullOrHalf,
 					notes: notes,
-					join_date: getJoinDate().toISOString().slice(0,10)
+					join_date: fmtIsoLocal(getJoinDate())
 				});
 				document.getElementById('leaveForm').reset();
 				statusMsg.textContent = 'Saved ✓';
@@ -568,13 +590,13 @@
 			if (joinInp.value && joinInp.value.length >= 10) {
 				setJoinDate(joinInp.value);
 				renderEntitlementTable();
-				initYearSelect();
+				initRangeInputs();
 				refreshTable();
 			}
 		};
 
 		renderEntitlementTable();
-		initYearSelect();
+		initRangeInputs();
 		refreshTable();
 	})();
 </script>
