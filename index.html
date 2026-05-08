@@ -67,36 +67,24 @@
 		.modal-overlay { position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 1rem; }
 		.modal-overlay.open { display: flex; }
 		.modal-card { background: #fff; border-radius: 10px; padding: 1.25rem; max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto; }
+		.modal-card.modal-wide { max-width: 920px; }
 		.modal-card h3 { margin: 0 0 1rem 0; color: var(--primary); }
 		.modal-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
 		#mainApp { display: none; }
 		#mainApp.visible { display: block; }
 	</style>
-	<!--
-	Supabase SQL (run once in SQL Editor):
-	create table if not exists leave_profiles (
-		id text primary key,
-		name text not null,
-		pin text not null unique,
-		join_date date not null
-	);
-	alter table leave_profiles enable row level security;
-	create policy "anon read profiles" on leave_profiles for select using (true);
-	create policy "anon insert profiles" on leave_profiles for insert with check (true);
-	create policy "anon update profiles" on leave_profiles for update using (true);
-	-->
+	
 </head>
 <body>
 
 <div id="gateScreen" class="gate-screen">
 	<div class="gate-card">
 		<h2>Delivergate — Leave</h2>
-		<p class="gate-sub">Enter your 4-digit PIN to open your profile.</p>
+		<p class="gate-sub">Enter your 4-digit PIN to open your profile. New accounts are created by an administrator after sign-in.</p>
 		<label for="gatePinInput" class="sub" style="display:block;margin-bottom:0.35rem;font-weight:600;color:var(--primary);">PIN</label>
 		<input type="password" id="gatePinInput" class="pin-field" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
 		<div class="gate-actions">
 			<button type="button" class="btn btn-primary" id="gateContinueBtn">Continue</button>
-			<button type="button" class="btn btn-ghost" id="gateAddUserBtn" style="border-color:#ccc;color:var(--primary);">Add user</button>
 		</div>
 	</div>
 </div>
@@ -128,13 +116,87 @@
 	</div>
 </div>
 
+<div id="editProfileModal" class="modal-overlay" aria-hidden="true">
+	<div class="modal-card">
+		<h3>Your name &amp; PIN</h3>
+		<p class="sub" style="margin-top:-0.5rem;">Update how your name appears. Leave PIN fields empty to keep your current PIN.</p>
+		<div class="form-row">
+			<label for="editProfileName">Full name</label>
+			<input type="text" id="editProfileName" maxlength="120" required>
+		</div>
+		<div class="form-row">
+			<label for="editProfilePinNew">New 4-digit PIN (optional)</label>
+			<input type="password" id="editProfilePinNew" class="pin-field" style="letter-spacing:0.25em;" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="Keep current">
+		</div>
+		<div class="form-row">
+			<label for="editProfilePinConfirm">Confirm new PIN</label>
+			<input type="password" id="editProfilePinConfirm" class="pin-field" style="letter-spacing:0.25em;" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="Keep current">
+		</div>
+		<div class="modal-actions">
+			<button type="button" class="btn btn-primary" id="editProfileSaveBtn">Save changes</button>
+			<button type="button" class="btn btn-ghost" id="editProfileCancelBtn">Cancel</button>
+		</div>
+	</div>
+</div>
+
+<div id="adminUsersModal" class="modal-overlay" aria-hidden="true">
+	<div class="modal-card modal-wide">
+		<h3>All users</h3>
+		<p class="sub" style="margin-top:-0.5rem;">View profiles and PINs, reset a PIN, or remove a user (their leave entries are deleted too).</p>
+		<p style="margin-bottom:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+			<button type="button" class="btn btn-primary" id="adminUsersRefreshBtn">Refresh</button>
+			<button type="button" class="btn btn-ghost" id="adminUsersCloseBtn">Close</button>
+		</p>
+		<div style="overflow-x:auto;">
+			<table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+				<thead>
+					<tr style="background:var(--primary-light);">
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Name</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Profile ID</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Join date</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Role</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">PIN</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Actions</th>
+					</tr>
+				</thead>
+				<tbody id="adminUsersTableBody"></tbody>
+			</table>
+		</div>
+	</div>
+</div>
+
+<div id="adminResetPinModal" class="modal-overlay" aria-hidden="true">
+	<div class="modal-card">
+		<h3>Reset PIN (admin)</h3>
+		<p class="sub" id="adminResetPinForLabel">—</p>
+		<input type="hidden" id="adminResetPinTargetId" value="">
+		<div class="form-row">
+			<label for="adminResetPinNew">New 4-digit PIN</label>
+			<input type="password" id="adminResetPinNew" class="pin-field" style="letter-spacing:0.25em;" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••">
+		</div>
+		<div class="form-row">
+			<label for="adminResetPinConfirm">Confirm PIN</label>
+			<input type="password" id="adminResetPinConfirm" class="pin-field" style="letter-spacing:0.25em;" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••">
+		</div>
+		<div class="modal-actions">
+			<button type="button" class="btn btn-primary" id="adminResetPinSaveBtn">Save PIN</button>
+			<button type="button" class="btn btn-ghost" id="adminResetPinCancelBtn">Cancel</button>
+		</div>
+	</div>
+</div>
+
 <div id="mainApp">
 <div class="user-bar">
 	<div class="inner">
 		<span style="font-weight:600;color:var(--primary);">Signed in:</span>
 		<span id="loggedInName">—</span>
+		<span id="adminBadge" class="sub" style="display:none;font-weight:700;color:#0b5d0b;">Admin</span>
 		<span class="sub">Leave records are saved under your profile.</span>
-		<button type="button" class="btn-ghost" id="logoutBtn" style="margin-left:auto;">Switch user</button>
+		<span style="flex:1;min-width:0.5rem;"></span>
+		<button type="button" class="btn-ghost" id="editProfileBtn">Reset Profile</button>
+		<button type="button" class="btn-ghost" id="adminUsersBtn" style="display:none;">Users</button>
+		<button type="button" class="btn-ghost" id="adminAddUserBtn" style="display:none;">Add user</button>
+		<button type="button" class="btn-ghost" id="logoutBtn">Switch user</button>
 	</div>
 </div>
 
@@ -264,12 +326,23 @@
 
 <div class="toast" id="toast"></div>
 
+<!--
+Supabase: admin Remove user runs DELETE on leave_entries then leave_profiles.
+If remove fails with 401/403, add RLS policies, e.g.:
+  create policy "anon delete entries" on leave_entries for delete using (true);
+  create policy "anon delete profiles" on leave_profiles for delete using (true);
+Admin user list selects pin — restrict API keys / RLS in production.
+-->
+
 <script>
 	const SUPABASE_URL = 'https://bqjtlemxbihnnsqhnrqq.supabase.co';
 	const SUPABASE_KEY = 'sb_publishable_UBXiN3wtRyJVYIXd-c9zrg_Tw90LHlC';
 	const STORAGE_KEY_JOIN = 'delivergate_join_date';
 	const STORAGE_KEY_USER = 'delivergate_user_id';
 	const STORAGE_KEY_PROFILE_NAME = 'delivergate_profile_name';
+	const STORAGE_KEY_PROFILE_ROLE = 'delivergate_profile_role';
+	/** Cleared on logout. Used only to match THARUSHI_ADMIN_PIN (sessionStorage, not persisted across tabs forever). */
+	const STORAGE_KEY_SESSION_PIN = 'delivergate_session_pin';
 	const DEFAULT_JOIN = '2025-03-03';
 	const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -287,6 +360,21 @@
 	const setUserId = v => localStorage.setItem(STORAGE_KEY_USER, String(v || '').trim());
 	const getProfileName = () => String(localStorage.getItem(STORAGE_KEY_PROFILE_NAME) || '').trim();
 	const setProfileName = v => localStorage.setItem(STORAGE_KEY_PROFILE_NAME, String(v || '').trim());
+	const getProfileRole = () => String(localStorage.getItem(STORAGE_KEY_PROFILE_ROLE) || 'user').trim().toLowerCase();
+	const setProfileRole = v => localStorage.setItem(STORAGE_KEY_PROFILE_ROLE, String(v || 'user').trim().toLowerCase());
+	/**
+	 * Set to Tharushi's real 4-digit PIN (same digits stored in leave_profiles.pin for her row).
+	 * Only someone who signs in with this PIN gets Add user (unless leave_profiles.role = 'admin').
+	 * Leave empty ('') to rely on DB role only.
+	 */
+	const THARUSHI_ADMIN_PIN = '';
+
+	function isAdmin() {
+		if (getProfileRole() === 'admin') return true;
+		if (!THARUSHI_ADMIN_PIN || !validatePin(THARUSHI_ADMIN_PIN)) return false;
+		const used = String(sessionStorage.getItem(STORAGE_KEY_SESSION_PIN) || '').trim();
+		return used === THARUSHI_ADMIN_PIN;
+	}
 
 	function validatePin(pin) {
 		return /^\d{4}$/.test(String(pin || '').trim());
@@ -295,7 +383,7 @@
 	async function fetchProfileByPin(pin) {
 		const p = String(pin || '').trim();
 		const rows = await sbFetch(
-			'/rest/v1/leave_profiles?pin=eq.' + encodeURIComponent(p) + '&select=id,name,join_date',
+			'/rest/v1/leave_profiles?pin=eq.' + encodeURIComponent(p) + '&select=id,name,join_date,role',
 			{ method: 'GET' }
 		);
 		return Array.isArray(rows) && rows.length ? rows[0] : null;
@@ -313,6 +401,22 @@
 		});
 	}
 
+	async function patchMyProfile(patch) {
+		const id = getUserId();
+		if (!id) throw new Error('Not signed in');
+		await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(id), {
+			method: 'PATCH',
+			body: JSON.stringify(patch)
+		});
+	}
+
+	async function patchProfileById(profileId, patch) {
+		await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId), {
+			method: 'PATCH',
+			body: JSON.stringify(patch)
+		});
+	}
+
 	function showMainApp(show) {
 		const gate = document.getElementById('gateScreen');
 		const main = document.getElementById('mainApp');
@@ -320,21 +424,35 @@
 		if (main) main.classList.toggle('visible', !!show);
 	}
 
+	function updateAdminUi() {
+		const adm = isAdmin();
+		const usersBtn = document.getElementById('adminUsersBtn');
+		if (usersBtn) usersBtn.style.display = adm ? 'inline-block' : 'none';
+		const addBtn = document.getElementById('adminAddUserBtn');
+		if (addBtn) addBtn.style.display = adm ? 'inline-block' : 'none';
+		const badge = document.getElementById('adminBadge');
+		if (badge) badge.style.display = adm ? 'inline' : 'none';
+	}
+
 	function applyProfileSession(profile) {
 		if (!profile || !profile.id) return;
 		setUserId(profile.id);
 		setProfileName(profile.name || '');
+		setProfileRole(profile.role || 'user');
 		if (profile.join_date && String(profile.join_date).length >= 10) {
 			setJoinDate(String(profile.join_date).slice(0, 10));
 		}
 		const nameEl = document.getElementById('loggedInName');
 		if (nameEl) nameEl.textContent = profile.name || profile.id;
+		updateAdminUi();
 		showMainApp(true);
 	}
 
 	function clearSession() {
 		localStorage.removeItem(STORAGE_KEY_USER);
 		localStorage.removeItem(STORAGE_KEY_PROFILE_NAME);
+		localStorage.removeItem(STORAGE_KEY_PROFILE_ROLE);
+		sessionStorage.removeItem(STORAGE_KEY_SESSION_PIN);
 		showMainApp(false);
 		const pinInp = document.getElementById('gatePinInput');
 		if (pinInp) pinInp.value = '';
@@ -342,7 +460,204 @@
 		if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="sub">Sign in with your PIN to load records.</td></tr>';
 	}
 
+	function openEditProfileModal(open) {
+		const m = document.getElementById('editProfileModal');
+		if (!m) return;
+		m.classList.toggle('open', !!open);
+		m.setAttribute('aria-hidden', open ? 'false' : 'true');
+		if (open) {
+			document.getElementById('editProfileName').value = getProfileName();
+			document.getElementById('editProfilePinNew').value = '';
+			document.getElementById('editProfilePinConfirm').value = '';
+			document.getElementById('editProfileName').focus();
+		}
+	}
+
+	async function saveEditProfile() {
+		const uid = getUserId();
+		if (!uid) {
+			showToast('Sign in first.', true);
+			return;
+		}
+		const name = document.getElementById('editProfileName').value.trim();
+		const pinNew = document.getElementById('editProfilePinNew').value.trim();
+		const pin2 = document.getElementById('editProfilePinConfirm').value.trim();
+		if (!name) {
+			showToast('Enter your full name.', true);
+			return;
+		}
+		let patch = { name: name };
+		if (pinNew || pin2) {
+			if (!validatePin(pinNew)) {
+				showToast('New PIN must be exactly 4 digits.', true);
+				return;
+			}
+			if (pinNew !== pin2) {
+				showToast('New PIN and confirmation do not match.', true);
+				return;
+			}
+			patch.pin = pinNew;
+		}
+		try {
+			await patchMyProfile(patch);
+			setProfileName(name);
+			const nameEl = document.getElementById('loggedInName');
+			if (nameEl) nameEl.textContent = name;
+			if (patch.pin) {
+				sessionStorage.setItem(STORAGE_KEY_SESSION_PIN, pinNew);
+				showToast('Profile updated. Use your new PIN next time you sign in ✓');
+			} else {
+				showToast('Profile updated ✓');
+			}
+			updateAdminUi();
+			openEditProfileModal(false);
+		} catch (err) {
+			const msg = String(err.message || '');
+			if (/duplicate|unique|23505/i.test(msg)) {
+				showToast('That PIN is already used by another user. Pick another.', true);
+			} else {
+				showToast('Could not save: ' + msg, true);
+			}
+		}
+	}
+
+	function escHtml(s) {
+		return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+	}
+
+	function openAdminUsersModal(open) {
+		if (open && !isAdmin()) {
+			showToast('Only an administrator can open user management.', true);
+			return;
+		}
+		const m = document.getElementById('adminUsersModal');
+		if (!m) return;
+		m.classList.toggle('open', !!open);
+		m.setAttribute('aria-hidden', open ? 'false' : 'true');
+		if (open) refreshAdminUsersList();
+	}
+
+	async function refreshAdminUsersList() {
+		const tbody = document.getElementById('adminUsersTableBody');
+		if (!tbody) return;
+		tbody.innerHTML = '<tr><td colspan="6" class="sub">Loading…</td></tr>';
+		try {
+			const rows = await sbFetch('/rest/v1/leave_profiles?select=id,name,join_date,role,pin&order=name.asc', { method: 'GET' });
+			const list = Array.isArray(rows) ? rows : [];
+			if (list.length === 0) {
+				tbody.innerHTML = '<tr><td colspan="6" class="sub">No profiles yet.</td></tr>';
+				return;
+			}
+			list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }));
+			tbody.innerHTML = list.map(p => {
+				const jd = p.join_date ? String(p.join_date).slice(0, 10) : '—';
+				const pinCell = p.pin != null && String(p.pin) !== '' ? escHtml(String(p.pin)) : '—';
+				const selfMark = p.id === getUserId() ? ' <span class="sub">(you)</span>' : '';
+				return '<tr>' +
+					'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(p.name) + selfMark + '</td>' +
+					'<td style="padding:0.45rem;border-bottom:1px solid #eee;font-size:0.8rem;word-break:break-all;">' + escHtml(p.id) + '</td>' +
+					'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(jd) + '</td>' +
+					'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(p.role || 'user') + '</td>' +
+					'<td style="padding:0.45rem;border-bottom:1px solid #eee;font-weight:600;">' + pinCell + '</td>' +
+					'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;">' +
+					'<button type="button" class="btn-edit admin-reset-pin-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Reset PIN</button> ' +
+					'<button type="button" class="btn-danger admin-remove-user-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '"' +
+					(p.id === getUserId() ? ' disabled title="Switch user first"' : '') + '>Remove</button>' +
+					'</td></tr>';
+			}).join('');
+			tbody.querySelectorAll('.admin-reset-pin-btn').forEach(btn => {
+				btn.onclick = () => openAdminResetPinModal(true, btn.getAttribute('data-id'), btn.getAttribute('data-name'));
+			});
+			tbody.querySelectorAll('.admin-remove-user-btn').forEach(btn => {
+				btn.onclick = () => removeUserAsAdmin(btn.getAttribute('data-id'), btn.getAttribute('data-name'));
+			});
+		} catch (err) {
+			tbody.innerHTML = '<tr><td colspan="6" class="sub">Could not load users: ' + escHtml(err.message) + '</td></tr>';
+			showToast('Load users failed: ' + err.message, true);
+		}
+	}
+
+	function openAdminResetPinModal(open, profileId, displayName) {
+		const m = document.getElementById('adminResetPinModal');
+		if (!m) return;
+		m.classList.toggle('open', !!open);
+		m.setAttribute('aria-hidden', open ? 'false' : 'true');
+		if (open && profileId) {
+			document.getElementById('adminResetPinTargetId').value = profileId;
+			document.getElementById('adminResetPinForLabel').textContent = 'Set a new PIN for: ' + displayName;
+			document.getElementById('adminResetPinNew').value = '';
+			document.getElementById('adminResetPinConfirm').value = '';
+			document.getElementById('adminResetPinNew').focus();
+		}
+		if (!open) {
+			document.getElementById('adminResetPinTargetId').value = '';
+			document.getElementById('adminResetPinNew').value = '';
+			document.getElementById('adminResetPinConfirm').value = '';
+		}
+	}
+
+	async function saveAdminResetPin() {
+		if (!isAdmin()) {
+			showToast('Only an administrator can reset PINs.', true);
+			return;
+		}
+		const profileId = document.getElementById('adminResetPinTargetId').value.trim();
+		const p1 = document.getElementById('adminResetPinNew').value.trim();
+		const p2 = document.getElementById('adminResetPinConfirm').value.trim();
+		if (!profileId) return;
+		if (!validatePin(p1)) {
+			showToast('PIN must be exactly 4 digits.', true);
+			return;
+		}
+		if (p1 !== p2) {
+			showToast('PIN and confirmation do not match.', true);
+			return;
+		}
+		try {
+			await patchProfileById(profileId, { pin: p1 });
+			if (profileId === getUserId()) {
+				sessionStorage.setItem(STORAGE_KEY_SESSION_PIN, p1);
+			}
+			openAdminResetPinModal(false);
+			showToast('PIN updated ✓');
+			await refreshAdminUsersList();
+		} catch (err) {
+			const msg = String(err.message || '');
+			if (/duplicate|unique|23505/i.test(msg)) {
+				showToast('That PIN is already used. Choose another.', true);
+			} else {
+				showToast('Could not reset PIN: ' + msg, true);
+			}
+		}
+	}
+
+	async function removeUserAsAdmin(profileId, displayName) {
+		if (!isAdmin()) {
+			showToast('Only an administrator can remove users.', true);
+			return;
+		}
+		if (!profileId) return;
+		if (profileId === getUserId()) {
+			showToast('Cannot remove your own profile here. Use Switch user first, or ask another admin.', true);
+			return;
+		}
+		if (!confirm('Remove user "' + displayName + '"?\n\nTheir profile and all leave entries will be deleted. This cannot be undone.')) return;
+		try {
+			await sbFetch('/rest/v1/leave_entries?user_id=eq.' + encodeURIComponent(profileId), { method: 'DELETE' });
+			await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId), { method: 'DELETE' });
+			showToast('User removed ✓');
+			await refreshAdminUsersList();
+			await refreshTable();
+		} catch (err) {
+			showToast('Remove failed: ' + err.message, true);
+		}
+	}
+
 	function openAddUserModal(open) {
+		if (open && !isAdmin()) {
+			showToast('Only an administrator can add users.', true);
+			return;
+		}
 		const m = document.getElementById('addUserModal');
 		if (!m) return;
 		m.classList.toggle('open', !!open);
@@ -368,9 +683,10 @@
 		try {
 			const profile = await fetchProfileByPin(pin);
 			if (!profile) {
-				showToast('PIN not found. Use Add user or check your PIN.', true);
+				showToast('PIN not found. Check your PIN or ask an administrator.', true);
 				return;
 			}
+			sessionStorage.setItem(STORAGE_KEY_SESSION_PIN, pin.trim());
 			applyProfileSession(profile);
 			bootMainAppAfterLogin();
 			showToast('Welcome, ' + (profile.name || '') + ' ✓');
@@ -380,6 +696,10 @@
 	}
 
 	async function saveNewUserProfile() {
+		if (!isAdmin()) {
+			showToast('Only an administrator can add users.', true);
+			return;
+		}
 		const name = document.getElementById('newUserName').value.trim();
 		const pin = document.getElementById('newUserPin').value.trim();
 		const pin2 = document.getElementById('newUserPinConfirm').value.trim();
@@ -390,12 +710,9 @@
 		if (!joinDate || joinDate.length < 10) { showToast('Choose join date.', true); return; }
 		const id = 'prof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
 		try {
-			await insertProfile({ id: id, name: name, pin: pin, join_date: joinDate });
+			await insertProfile({ id: id, name: name, pin: pin, join_date: joinDate, role: 'user' });
 			openAddUserModal(false);
-			applyProfileSession({ id: id, name: name, join_date: joinDate });
-			document.getElementById('gatePinInput').value = '';
-			bootMainAppAfterLogin();
-			showToast('Profile created. You are signed in ✓');
+			showToast('User profile created for ' + name + ' ✓ They can sign in with their PIN.');
 		} catch (err) {
 			const msg = String(err.message || '');
 			if (/duplicate|unique|23505/i.test(msg)) {
@@ -803,7 +1120,26 @@
 				gateLoginWithPin();
 			}
 		});
-		document.getElementById('gateAddUserBtn').onclick = () => openAddUserModal(true);
+		document.getElementById('editProfileBtn').onclick = () => openEditProfileModal(true);
+		document.getElementById('editProfileCancelBtn').onclick = () => openEditProfileModal(false);
+		document.getElementById('editProfileSaveBtn').onclick = saveEditProfile;
+		document.getElementById('editProfileModal').addEventListener('click', function(ev) {
+			if (ev.target === this) openEditProfileModal(false);
+		});
+
+		document.getElementById('adminUsersBtn').onclick = () => openAdminUsersModal(true);
+		document.getElementById('adminUsersCloseBtn').onclick = () => openAdminUsersModal(false);
+		document.getElementById('adminUsersRefreshBtn').onclick = () => refreshAdminUsersList();
+		document.getElementById('adminUsersModal').addEventListener('click', function(ev) {
+			if (ev.target === this) openAdminUsersModal(false);
+		});
+		document.getElementById('adminResetPinCancelBtn').onclick = () => openAdminResetPinModal(false);
+		document.getElementById('adminResetPinSaveBtn').onclick = saveAdminResetPin;
+		document.getElementById('adminResetPinModal').addEventListener('click', function(ev) {
+			if (ev.target === this) openAdminResetPinModal(false);
+		});
+
+		document.getElementById('adminAddUserBtn').onclick = () => openAddUserModal(true);
 		document.getElementById('logoutBtn').onclick = () => {
 			clearSession();
 			document.getElementById('gatePinInput').focus();
