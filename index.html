@@ -57,15 +57,84 @@
 		.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #003366; color: white; padding: 0.75rem 1.25rem; border-radius: 6px; font-size: 0.95rem; z-index: 999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
 		.toast.error { background: #c00; }
 		#statusMsg { font-size: 0.9rem; margin-top: 0.5rem; min-height: 1.2em; }
+		.gate-screen { position: fixed; inset: 0; z-index: 1000; background: linear-gradient(160deg, #003366 0%, #001a33 100%); color: #fff; display: flex; align-items: center; justify-content: center; padding: 1.25rem; }
+		.gate-card { background: #fff; color: var(--text); border-radius: 12px; padding: 1.75rem 1.5rem; max-width: 400px; width: 100%; box-shadow: 0 8px 32px rgba(0,0,0,0.25); }
+		.gate-card h2 { margin: 0 0 0.35rem 0; font-size: 1.35rem; color: var(--primary); }
+		.gate-card .gate-sub { margin: 0 0 1.25rem 0; font-size: 0.9rem; color: #555; }
+		.pin-field { width: 100%; padding: 0.65rem 0.75rem; font-size: 1.35rem; letter-spacing: 0.35em; text-align: center; border: 2px solid var(--border); border-radius: 8px; font-weight: 700; }
+		.gate-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
+		.gate-actions .btn { flex: 1; min-width: 120px; }
+		.modal-overlay { position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 1rem; }
+		.modal-overlay.open { display: flex; }
+		.modal-card { background: #fff; border-radius: 10px; padding: 1.25rem; max-width: 420px; width: 100%; max-height: 90vh; overflow-y: auto; }
+		.modal-card h3 { margin: 0 0 1rem 0; color: var(--primary); }
+		.modal-actions { display: flex; gap: 0.5rem; flex-wrap: wrap; margin-top: 1rem; }
+		#mainApp { display: none; }
+		#mainApp.visible { display: block; }
 	</style>
+	<!--
+	Supabase SQL (run once in SQL Editor):
+	create table if not exists leave_profiles (
+		id text primary key,
+		name text not null,
+		pin text not null unique,
+		join_date date not null
+	);
+	alter table leave_profiles enable row level security;
+	create policy "anon read profiles" on leave_profiles for select using (true);
+	create policy "anon insert profiles" on leave_profiles for insert with check (true);
+	create policy "anon update profiles" on leave_profiles for update using (true);
+	-->
 </head>
 <body>
 
+<div id="gateScreen" class="gate-screen">
+	<div class="gate-card">
+		<h2>Delivergate — Leave</h2>
+		<p class="gate-sub">Enter your 4-digit PIN to open your profile.</p>
+		<label for="gatePinInput" class="sub" style="display:block;margin-bottom:0.35rem;font-weight:600;color:var(--primary);">PIN</label>
+		<input type="password" id="gatePinInput" class="pin-field" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+		<div class="gate-actions">
+			<button type="button" class="btn btn-primary" id="gateContinueBtn">Continue</button>
+			<button type="button" class="btn btn-ghost" id="gateAddUserBtn" style="border-color:#ccc;color:var(--primary);">Add user</button>
+		</div>
+	</div>
+</div>
+
+<div id="addUserModal" class="modal-overlay" aria-hidden="true">
+	<div class="modal-card">
+		<h3>Add user</h3>
+		<p class="sub" style="margin-top:-0.5rem;">Creates a profile and links all leave records to it.</p>
+		<div class="form-row">
+			<label for="newUserName">Full name</label>
+			<input type="text" id="newUserName" maxlength="120" placeholder="e.g. Tharushi Perera">
+		</div>
+		<div class="form-row">
+			<label for="newUserPin">4-digit PIN</label>
+			<input type="password" id="newUserPin" class="pin-field" style="letter-spacing:0.25em;" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••">
+		</div>
+		<div class="form-row">
+			<label for="newUserPinConfirm">Confirm PIN</label>
+			<input type="password" id="newUserPinConfirm" class="pin-field" style="letter-spacing:0.25em;" inputmode="numeric" maxlength="4" autocomplete="new-password" placeholder="••••">
+		</div>
+		<div class="form-row">
+			<label for="newUserJoinDate">Join date</label>
+			<input type="date" id="newUserJoinDate" required>
+		</div>
+		<div class="modal-actions">
+			<button type="button" class="btn btn-primary" id="modalSaveUserBtn">Save profile</button>
+			<button type="button" class="btn btn-ghost" id="modalCancelBtn">Cancel</button>
+		</div>
+	</div>
+</div>
+
+<div id="mainApp">
 <div class="user-bar">
 	<div class="inner">
-		<label for="userIdInput">Your name / ID:</label>
-		<input type="text" id="userIdInput" placeholder="e.g. Tharushi" maxlength="60">
-		<span class="sub">Each person's records are saved separately in the database.</span>
+		<span style="font-weight:600;color:var(--primary);">Signed in:</span>
+		<span id="loggedInName">—</span>
+		<span class="sub">Leave records are saved under your profile.</span>
+		<button type="button" class="btn-ghost" id="logoutBtn" style="margin-left:auto;">Switch user</button>
 	</div>
 </div>
 
@@ -154,7 +223,7 @@
 					<tr><th>Date</th><th>Type</th><th>Full/Half</th><th>Half-days</th><th>Notes</th><th></th></tr>
 				</thead>
 				<tbody id="leaveListBody">
-					<tr><td colspan="6" class="sub">Enter your name/ID above to load records.</td></tr>
+					<tr><td colspan="6" class="sub">Sign in with your PIN to load records.</td></tr>
 				</tbody>
 			</table>
 		</div>
@@ -191,6 +260,7 @@
 
 	<p style="text-align:center;color:#666;font-size:0.875rem;margin-top:1.5rem;">Delivergate Pvt Ltd — Leave Policy (Policy No. 01)</p>
 </div>
+</div><!-- #mainApp -->
 
 <div class="toast" id="toast"></div>
 
@@ -199,6 +269,7 @@
 	const SUPABASE_KEY = 'sb_publishable_UBXiN3wtRyJVYIXd-c9zrg_Tw90LHlC';
 	const STORAGE_KEY_JOIN = 'delivergate_join_date';
 	const STORAGE_KEY_USER = 'delivergate_user_id';
+	const STORAGE_KEY_PROFILE_NAME = 'delivergate_profile_name';
 	const DEFAULT_JOIN = '2025-03-03';
 	const MONTHS = ['January','February','March','April','May','June','July','August','September','October','November','December'];
 
@@ -212,8 +283,154 @@
 	}
 
 	// ── User / Join date ───────────────────────────────────────────
-	const getUserId = () => localStorage.getItem(STORAGE_KEY_USER) || '';
-	const setUserId = v => localStorage.setItem(STORAGE_KEY_USER, v);
+	const getUserId = () => String(localStorage.getItem(STORAGE_KEY_USER) || '').trim();
+	const setUserId = v => localStorage.setItem(STORAGE_KEY_USER, String(v || '').trim());
+	const getProfileName = () => String(localStorage.getItem(STORAGE_KEY_PROFILE_NAME) || '').trim();
+	const setProfileName = v => localStorage.setItem(STORAGE_KEY_PROFILE_NAME, String(v || '').trim());
+
+	function validatePin(pin) {
+		return /^\d{4}$/.test(String(pin || '').trim());
+	}
+
+	async function fetchProfileByPin(pin) {
+		const p = String(pin || '').trim();
+		const rows = await sbFetch(
+			'/rest/v1/leave_profiles?pin=eq.' + encodeURIComponent(p) + '&select=id,name,join_date',
+			{ method: 'GET' }
+		);
+		return Array.isArray(rows) && rows.length ? rows[0] : null;
+	}
+
+	async function insertProfile(row) {
+		return await sbFetch('/rest/v1/leave_profiles', { method: 'POST', body: JSON.stringify(row) });
+	}
+
+	async function patchProfileJoinDate(profileId, joinDateIso) {
+		if (!profileId || !joinDateIso) return;
+		await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId), {
+			method: 'PATCH',
+			body: JSON.stringify({ join_date: joinDateIso })
+		});
+	}
+
+	function showMainApp(show) {
+		const gate = document.getElementById('gateScreen');
+		const main = document.getElementById('mainApp');
+		if (gate) gate.style.display = show ? 'none' : 'flex';
+		if (main) main.classList.toggle('visible', !!show);
+	}
+
+	function applyProfileSession(profile) {
+		if (!profile || !profile.id) return;
+		setUserId(profile.id);
+		setProfileName(profile.name || '');
+		if (profile.join_date && String(profile.join_date).length >= 10) {
+			setJoinDate(String(profile.join_date).slice(0, 10));
+		}
+		const nameEl = document.getElementById('loggedInName');
+		if (nameEl) nameEl.textContent = profile.name || profile.id;
+		showMainApp(true);
+	}
+
+	function clearSession() {
+		localStorage.removeItem(STORAGE_KEY_USER);
+		localStorage.removeItem(STORAGE_KEY_PROFILE_NAME);
+		showMainApp(false);
+		const pinInp = document.getElementById('gatePinInput');
+		if (pinInp) pinInp.value = '';
+		const tbody = document.getElementById('leaveListBody');
+		if (tbody) tbody.innerHTML = '<tr><td colspan="6" class="sub">Sign in with your PIN to load records.</td></tr>';
+	}
+
+	function openAddUserModal(open) {
+		const m = document.getElementById('addUserModal');
+		if (!m) return;
+		m.classList.toggle('open', !!open);
+		m.setAttribute('aria-hidden', open ? 'false' : 'true');
+		if (open) {
+			document.getElementById('newUserName').value = '';
+			document.getElementById('newUserPin').value = '';
+			document.getElementById('newUserPinConfirm').value = '';
+			const jd = document.getElementById('newUserJoinDate');
+			const cur = localStorage.getItem(STORAGE_KEY_JOIN) || DEFAULT_JOIN;
+			jd.value = cur.length >= 10 ? cur.slice(0, 10) : DEFAULT_JOIN;
+			document.getElementById('newUserName').focus();
+		}
+	}
+
+	async function gateLoginWithPin() {
+		const pinInp = document.getElementById('gatePinInput');
+		const pin = pinInp ? pinInp.value : '';
+		if (!validatePin(pin)) {
+			showToast('Enter a 4-digit PIN.', true);
+			return;
+		}
+		try {
+			const profile = await fetchProfileByPin(pin);
+			if (!profile) {
+				showToast('PIN not found. Use Add user or check your PIN.', true);
+				return;
+			}
+			applyProfileSession(profile);
+			bootMainAppAfterLogin();
+			showToast('Welcome, ' + (profile.name || '') + ' ✓');
+		} catch (err) {
+			showToast('Sign-in failed: ' + err.message, true);
+		}
+	}
+
+	async function saveNewUserProfile() {
+		const name = document.getElementById('newUserName').value.trim();
+		const pin = document.getElementById('newUserPin').value.trim();
+		const pin2 = document.getElementById('newUserPinConfirm').value.trim();
+		const joinDate = document.getElementById('newUserJoinDate').value;
+		if (!name) { showToast('Enter full name.', true); return; }
+		if (!validatePin(pin)) { showToast('PIN must be exactly 4 digits.', true); return; }
+		if (pin !== pin2) { showToast('PIN and confirmation do not match.', true); return; }
+		if (!joinDate || joinDate.length < 10) { showToast('Choose join date.', true); return; }
+		const id = 'prof_' + Date.now() + '_' + Math.random().toString(36).slice(2, 8);
+		try {
+			await insertProfile({ id: id, name: name, pin: pin, join_date: joinDate });
+			openAddUserModal(false);
+			applyProfileSession({ id: id, name: name, join_date: joinDate });
+			document.getElementById('gatePinInput').value = '';
+			bootMainAppAfterLogin();
+			showToast('Profile created. You are signed in ✓');
+		} catch (err) {
+			const msg = String(err.message || '');
+			if (/duplicate|unique|23505/i.test(msg)) {
+				showToast('That PIN is already taken. Choose another.', true);
+			} else {
+				showToast('Could not save profile: ' + msg, true);
+			}
+		}
+	}
+
+	let joinDateChangeAttached = false;
+	function bootMainAppAfterLogin() {
+		const joinInp = document.getElementById('joinDateInput');
+		const j = getJoinDate();
+		joinInp.value = j.getFullYear() + '-' + String(j.getMonth()+1).padStart(2,'0') + '-' + String(j.getDate()).padStart(2,'0');
+		if (!joinDateChangeAttached) {
+			joinDateChangeAttached = true;
+			joinInp.onchange = async () => {
+				if (joinInp.value && joinInp.value.length >= 10) {
+					setJoinDate(joinInp.value);
+					try {
+						await patchProfileJoinDate(getUserId(), joinInp.value);
+					} catch (e) {
+						showToast('Join date saved locally; profile sync failed: ' + e.message, true);
+					}
+					renderEntitlementTable();
+					initRangeInputs();
+					refreshTable();
+				}
+			};
+		}
+		renderEntitlementTable();
+		initRangeInputs();
+		refreshTable();
+	}
 	const getJoinDate = () => new Date((localStorage.getItem(STORAGE_KEY_JOIN) || DEFAULT_JOIN));
 	const setJoinDate = s => { if (s && s.length >= 10) localStorage.setItem(STORAGE_KEY_JOIN, s); };
 
@@ -448,7 +665,7 @@
 			return;
 		}
 		if (!getUserId()) {
-			document.getElementById('leaveListBody').innerHTML = '<tr><td colspan="6" class="sub">Enter your name/ID above to load records.</td></tr>';
+			document.getElementById('leaveListBody').innerHTML = '<tr><td colspan="6" class="sub">Sign in with your PIN to load records.</td></tr>';
 			renderBalance(fromDate, toDate, []);
 			return;
 		}
@@ -466,7 +683,7 @@
 	// ── Period range inputs ────────────────────────────────────────
 	function initRangeInputs() {
 		const joinYear = getJoinDate().getFullYear();
-		// Always default to the second period from join date (joinYear + 1).
+		// Default to the second period from join date (joinYear + 1).
 		// Example: join 2025/03/03 => 2026/03/03 - 2027/03/02.
 		const defaultYear = joinYear + 1;
 		const fromInp = document.getElementById('periodFromInput');
@@ -486,7 +703,7 @@
 	document.getElementById('leaveForm').onsubmit = async function(ev) {
 		ev.preventDefault();
 		const userId = getUserId();
-		if (!userId) { showToast('Please enter your name/ID first.', true); return; }
+		if (!userId) { showToast('Please sign in with your PIN first.', true); return; }
 
 		const type = document.getElementById('leaveType').value;
 		const leaveDate = document.getElementById('leaveDate').value;
@@ -577,27 +794,28 @@
 
 	// ── Init ───────────────────────────────────────────────────────
 	(function init() {
-		// User ID
-		const userInp = document.getElementById('userIdInput');
-		userInp.value = getUserId();
-		userInp.onblur = () => { setUserId(userInp.value.trim()); refreshTable(); };
+		showMainApp(false);
 
-		// Join date
-		const joinInp = document.getElementById('joinDateInput');
-		const j = getJoinDate();
-		joinInp.value = j.getFullYear() + '-' + String(j.getMonth()+1).padStart(2,'0') + '-' + String(j.getDate()).padStart(2,'0');
-		joinInp.onchange = () => {
-			if (joinInp.value && joinInp.value.length >= 10) {
-				setJoinDate(joinInp.value);
-				renderEntitlementTable();
-				initRangeInputs();
-				refreshTable();
+		document.getElementById('gateContinueBtn').onclick = gateLoginWithPin;
+		document.getElementById('gatePinInput').addEventListener('keydown', function(e) {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				gateLoginWithPin();
 			}
+		});
+		document.getElementById('gateAddUserBtn').onclick = () => openAddUserModal(true);
+		document.getElementById('logoutBtn').onclick = () => {
+			clearSession();
+			document.getElementById('gatePinInput').focus();
 		};
 
-		renderEntitlementTable();
-		initRangeInputs();
-		refreshTable();
+		document.getElementById('modalCancelBtn').onclick = () => openAddUserModal(false);
+		document.getElementById('modalSaveUserBtn').onclick = saveNewUserProfile;
+		document.getElementById('addUserModal').addEventListener('click', function(ev) {
+			if (ev.target === this) openAddUserModal(false);
+		});
+
+		document.getElementById('gatePinInput').focus();
 	})();
 </script>
 </body>
