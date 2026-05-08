@@ -64,7 +64,7 @@
 <div class="user-bar">
 	<div class="inner">
 		<label for="userIdInput">Your name / ID:</label>
-		<input type="text" id="userIdInput" placeholder="e.g. tharushi" maxlength="60">
+		<input type="text" id="userIdInput" placeholder="e.g. Tharushi" maxlength="60">
 		<span class="sub">Each person's records are saved separately in the database.</span>
 	</div>
 </div>
@@ -166,7 +166,7 @@
 	</section>
 
 	<div class="card"><div class="card-head">1. Annual Leave</div><div class="card-body">
-		<p><strong>1.1</strong> 14 days per full calendar year from the following year.</p>
+		<p><strong>1.1</strong> 10 days per full calendar year from the following year.</p>
 		<p><strong>1.2</strong> First year: Jan–Mar = 14d, Apr–Jun = 10d, Jul–Sep = 7d, Oct+ = 4d.</p>
 		<p><strong>1.3</strong> No Annual Leave during Training or Probation.</p>
 		<p><strong>1.5</strong> Apply at least <strong>07 days in advance</strong>.</p>
@@ -248,11 +248,11 @@
 
 	// ── Entitlement ────────────────────────────────────────────────
 	// Period 0 & 1 (first 2 years): no annual, 12 casual half-days
-	// Period 2+: 14 annual days, 14 casual half-days (= 7 days)
+	// Period 2+ (3rd year onward): 10 annual days, 14 casual half-days (= 7 days)
 	function getEntitlement(year) {
 		const idx = parseInt(year) - getJoinDate().getFullYear();
 		if (idx === 0 || idx === 1) return { annual: 0, casualHalfDays: 12 };
-		return { annual: 14, casualHalfDays: 14 };
+		return { annual: 10, casualHalfDays: 14 };
 	}
 
 	function renderEntitlementTable() {
@@ -262,7 +262,7 @@
 		document.getElementById('entitlementTableBody').innerHTML =
 			'<tr><td>' + getPeriodLabel(jy) + '</td><td>No annual. Casual: 12 half-days.</td></tr>' +
 			'<tr><td>' + getPeriodLabel(jy+1) + '</td><td>No annual. Casual: 12 half-days.</td></tr>' +
-			'<tr><td>' + fmt(getPeriodStart(jy+2)) + ' onwards</td><td>Annual: 14 days. Casual: 14 half-days (7 days).</td></tr>';
+			'<tr><td>' + fmt(getPeriodStart(jy+2)) + ' onwards</td><td>Annual: 10 days. Casual: 14 half-days (7 days).</td></tr>';
 	}
 
 	// ── Supabase API ───────────────────────────────────────────────
