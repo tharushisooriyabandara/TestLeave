@@ -307,9 +307,9 @@
 		<p><strong>1.5</strong> Apply at least <strong>07 days in advance</strong>.</p>
 	</div></div>
 	<div class="card"><div class="card-head">2. Casual Leave</div><div class="card-body">
-		<p><strong>2.1</strong> 06 days per calendar year (shown in the app as decimal days, e.g. 0.5, 5.5).</p>
-		<p><strong>2.2</strong> First year: ½ day per completed month (max 6 days).</p>
-		<p><strong>2.3</strong> From next calendar year: full entitlement applies from 1 January.</p>
+		<p><strong>2.1</strong> First two leave-years: casual 6 days each (decimals e.g. 0.5, 5.5).</p>
+		<p><strong>2.2</strong> First year accrual: ½ day per completed month (max 6 days).</p>
+		<p><strong>2.3</strong> From the third leave-year onward: annual 10 days, casual 7 days.</p>
 	</div></div>
 	<div class="card"><div class="card-head">3. Duty Leave</div><div class="card-body"><p>For official company activities. Requires Superior and HOD approval.</p></div></div>
 	<div class="card"><div class="card-head">4. Lieu Leave</div><div class="card-body"><p>≥8 hrs on holiday = 1 day lieu; 4½–8 hrs = ½ day. Use within same/next month.</p></div></div>
@@ -794,11 +794,11 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	// ── Entitlement ────────────────────────────────────────────────
-	// Casual balances are shown in days (0.5 increments). Period 0 & 1: no annual, 6 casual days. Period 2+: 10 annual, 6 casual days.
+	// Casual balances are shown in days (0.5 increments). Period 0 & 1: no annual, 6 casual days. Period 2+ onward: annual 10, casual 7.
 	function getEntitlement(year) {
 		const idx = parseInt(year) - getJoinDate().getFullYear();
 		if (idx === 0 || idx === 1) return { annual: 0, casualDays: 6 };
-		return { annual: 10, casualDays: 6 };
+		return { annual: 10, casualDays: 7 };
 	}
 
 	/** Format leave amounts in days (shows one decimal when needed, e.g. 5.5). */
@@ -822,7 +822,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		document.getElementById('entitlementTableBody').innerHTML =
 			'<tr><td>' + getPeriodLabel(jy) + '</td><td>No annual. Casual: 6 days.</td></tr>' +
 			'<tr><td>' + getPeriodLabel(jy+1) + '</td><td>No annual. Casual: 6 days.</td></tr>' +
-			'<tr><td>' + fmt(getPeriodStart(jy+2)) + ' onwards</td><td>Annual: 10 days. Casual: 6 days.</td></tr>';
+			'<tr><td>' + fmt(getPeriodStart(jy+2)) + ' onward</td><td>Annual 10 days, Casual 7 days.</td></tr>';
 	}
 
 	// ── Supabase API ───────────────────────────────────────────────
