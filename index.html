@@ -233,7 +233,7 @@
 				</div>
 				<div class="balance-box">
 					<h3>Casual Leave</h3>
-					<div class="balance-total">Total: <span id="casualEntitle">—</span> half-days</div>
+					<div class="balance-total">Total: <span id="casualEntitle">—</span> days</div>
 					<div class="balance-box-inner">
 						<div class="balance-cell"><div class="label">Used</div><div class="value" id="casualUsed">0</div></div>
 						<div class="balance-cell remain"><div class="label">Remain</div><div class="value" id="casualRemain">—</div></div>
@@ -282,7 +282,7 @@
 			<p><strong>My leave entries</strong> <span class="sub" id="loadingMsg"></span></p>
 			<table id="leaveList">
 				<thead>
-					<tr><th>Date</th><th>Type</th><th>Full/Half</th><th>Half-days</th><th>Notes</th><th></th></tr>
+					<tr><th>Date</th><th>Type</th><th>Full/Half</th><th>Days</th><th>Notes</th><th></th></tr>
 				</thead>
 				<tbody id="leaveListBody">
 					<tr><td colspan="6" class="sub">Sign in with your PIN to load records.</td></tr>
@@ -307,9 +307,9 @@
 		<p><strong>1.5</strong> Apply at least <strong>07 days in advance</strong>.</p>
 	</div></div>
 	<div class="card"><div class="card-head">2. Casual Leave</div><div class="card-body">
-		<p><strong>2.1</strong> 07 days per calendar year.</p>
-		<p><strong>2.2</strong> First year: ½ day per completed month (max 6 days / 12 half-days).</p>
-		<p><strong>2.3</strong> From next calendar year: full 7 days from 1 January.</p>
+		<p><strong>2.1</strong> 06 days per calendar year (shown in the app as decimal days, e.g. 0.5, 5.5).</p>
+		<p><strong>2.2</strong> First year: ½ day per completed month (max 6 days).</p>
+		<p><strong>2.3</strong> From next calendar year: full entitlement applies from 1 January.</p>
 	</div></div>
 	<div class="card"><div class="card-head">3. Duty Leave</div><div class="card-body"><p>For official company activities. Requires Superior and HOD approval.</p></div></div>
 	<div class="card"><div class="card-head">4. Lieu Leave</div><div class="card-body"><p>≥8 hrs on holiday = 1 day lieu; 4½–8 hrs = ½ day. Use within same/next month.</p></div></div>
@@ -794,12 +794,25 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	// ── Entitlement ────────────────────────────────────────────────
-	// Period 0 & 1 (first 2 years): no annual, 12 casual half-days
-	// Period 2+ (3rd year onward): 10 annual days, 14 casual half-days (= 7 days)
+	// Casual balances are shown in days (0.5 increments). Period 0 & 1: no annual, 6 casual days. Period 2+: 10 annual, 6 casual days.
 	function getEntitlement(year) {
 		const idx = parseInt(year) - getJoinDate().getFullYear();
-		if (idx === 0 || idx === 1) return { annual: 0, casualHalfDays: 12 };
-		return { annual: 10, casualHalfDays: 14 };
+		if (idx === 0 || idx === 1) return { annual: 0, casualDays: 6 };
+		return { annual: 10, casualDays: 6 };
+	}
+
+	/** Format leave amounts in days (shows one decimal when needed, e.g. 5.5). */
+	function fmtDayAmount(d) {
+		const n = Number(d);
+		if (Number.isNaN(n)) return '—';
+		const r = Math.round(Math.max(0, n) * 10) / 10;
+		return (r % 1 === 0 ? String(r) : r.toFixed(1));
+	}
+
+	function entryLeaveDaysDisplay(e) {
+		if (e.full_or_half === 'covered') return '0';
+		const u = e.full_or_half === 'full' ? 1 : 0.5;
+		return fmtDayAmount(u);
 	}
 
 	function renderEntitlementTable() {
@@ -807,9 +820,9 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		const jy = j.getFullYear();
 		document.getElementById('summaryJoinDate').textContent = fmt(j);
 		document.getElementById('entitlementTableBody').innerHTML =
-			'<tr><td>' + getPeriodLabel(jy) + '</td><td>No annual. Casual: 12 half-days.</td></tr>' +
-			'<tr><td>' + getPeriodLabel(jy+1) + '</td><td>No annual. Casual: 12 half-days.</td></tr>' +
-			'<tr><td>' + fmt(getPeriodStart(jy+2)) + ' onwards</td><td>Annual: 10 days. Casual: 14 half-days (7 days).</td></tr>';
+			'<tr><td>' + getPeriodLabel(jy) + '</td><td>No annual. Casual: 6 days.</td></tr>' +
+			'<tr><td>' + getPeriodLabel(jy+1) + '</td><td>No annual. Casual: 6 days.</td></tr>' +
+			'<tr><td>' + fmt(getPeriodStart(jy+2)) + ' onwards</td><td>Annual: 10 days. Casual: 6 days.</td></tr>';
 	}
 
 	// ── Supabase API ───────────────────────────────────────────────
@@ -870,11 +883,11 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	function renderBalance(fromDate, toDate, entries) {
 		const entYear = getPeriodYear(fromDate);
 		const ent = getEntitlement(entYear == null ? new Date(fromDate).getFullYear() : entYear);
-		let annualUsed = 0, casualUsedHalf = 0;
+		let annualUsed = 0, casualUsedDays = 0;
 		(entries || []).forEach(e => {
 			if (e.full_or_half === 'covered') return;
 			if (e.type === 'annual') annualUsed += (e.full_or_half === 'full' ? 1 : 0.5);
-			else if (e.type === 'casual') casualUsedHalf += (e.full_or_half === 'full' ? 2 : 1);
+			else if (e.type === 'casual') casualUsedDays += (e.full_or_half === 'full' ? 1 : 0.5);
 		});
 		const rangeYmd = fromDate.replace(/-/g, '/') + ' - ' + toDate.replace(/-/g, '/');
 		document.getElementById('periodRange').textContent = rangeYmd;
@@ -882,12 +895,12 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		if (prd) prd.textContent = rangeYmd;
 		const yl = document.getElementById('yearLabel');
 		if (yl) yl.textContent = rangeYmd;
-		document.getElementById('annualEntitle').textContent = ent.annual;
-		document.getElementById('annualUsed').textContent = annualUsed;
-		document.getElementById('annualRemain').textContent = Math.max(0, ent.annual - annualUsed);
-		document.getElementById('casualEntitle').textContent = ent.casualHalfDays;
-		document.getElementById('casualUsed').textContent = casualUsedHalf;
-		document.getElementById('casualRemain').textContent = Math.max(0, ent.casualHalfDays - casualUsedHalf);
+		document.getElementById('annualEntitle').textContent = fmtDayAmount(ent.annual);
+		document.getElementById('annualUsed').textContent = fmtDayAmount(annualUsed);
+		document.getElementById('annualRemain').textContent = fmtDayAmount(Math.max(0, ent.annual - annualUsed));
+		document.getElementById('casualEntitle').textContent = fmtDayAmount(ent.casualDays);
+		document.getElementById('casualUsed').textContent = fmtDayAmount(casualUsedDays);
+		document.getElementById('casualRemain').textContent = fmtDayAmount(Math.max(0, ent.casualDays - casualUsedDays));
 	}
 
 	// ── Edit mode ──────────────────────────────────────────────────
@@ -901,14 +914,14 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	function sumUsageFromEntries(entries, excludeId) {
-		let annualUsed = 0, casualUsedHalf = 0;
+		let annualUsed = 0, casualUsedDays = 0;
 		(entries || []).forEach(e => {
 			if (excludeId && e.id === excludeId) return;
 			if (e.full_or_half === 'covered') return;
 			if (e.type === 'annual') annualUsed += (e.full_or_half === 'full' ? 1 : 0.5);
-			else if (e.type === 'casual') casualUsedHalf += (e.full_or_half === 'full' ? 2 : 1);
+			else if (e.type === 'casual') casualUsedDays += (e.full_or_half === 'full' ? 1 : 0.5);
 		});
-		return { annualUsed, casualUsedHalf };
+		return { annualUsed, casualUsedDays };
 	}
 
 	// ── Render list ────────────────────────────────────────────────
@@ -927,7 +940,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		tbody.innerHTML = sorted.map(e => {
 			const typeLabel = e.type === 'annual' ? 'Annual' : 'Casual';
 			const fullHalf = e.full_or_half === 'full' ? 'Full' : e.full_or_half === 'half' ? 'Half' : 'Covered';
-			const hd = e.full_or_half === 'covered' ? '0' : e.full_or_half === 'full' ? '2' : '1';
+			const dayAmt = entryLeaveDaysDisplay(e);
 			const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 			return '<tr data-id="' + esc(e.id) + '"' +
 				' data-type="' + esc(e.type) + '"' +
@@ -937,7 +950,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 				'<td>' + e.date + '</td>' +
 				'<td>' + typeLabel + '</td>' +
 				'<td>' + fullHalf + '</td>' +
-				'<td>' + hd + ' hd</td>' +
+				'<td>' + dayAmt + '</td>' +
 				'<td>' + (e.notes || '—') + '</td>' +
 				'<td><button type="button" class="btn-edit edit-btn">Edit</button>' +
 				'<button type="button" class="btn-danger delete-btn">Delete</button></td></tr>';
@@ -1038,13 +1051,13 @@ Admin user list selects pin — restrict API keys / RLS in production.
 
 		// Check balance (when editing, exclude this row from usage totals)
 		const ent = getEntitlement(year);
-		let usedAnnual = 0, usedCasualHalf = 0;
+		let usedAnnual = 0, usedCasualDays = 0;
 		try {
 			const existing = await fetchEntries(year);
 			const excl = isEdit ? editingEntryId : null;
 			const sums = sumUsageFromEntries(existing, excl);
 			usedAnnual = sums.annualUsed;
-			usedCasualHalf = sums.casualUsedHalf;
+			usedCasualDays = sums.casualUsedDays;
 		} catch(err) {
 			showToast('Could not verify balance: ' + err.message, true);
 			return;
@@ -1058,9 +1071,9 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			}
 		}
 		if (type === 'casual' && fullOrHalf !== 'covered') {
-			const addHalf = fullOrHalf === 'full' ? 2 : 1;
-			if (usedCasualHalf + addHalf > ent.casualHalfDays) {
-				showToast('Casual leave: only ' + Math.max(0, ent.casualHalfDays - usedCasualHalf) + ' half-day(s) remaining.', true);
+			const addDays = fullOrHalf === 'full' ? 1 : 0.5;
+			if (usedCasualDays + addDays > ent.casualDays + 1e-9) {
+				showToast('Casual leave: only ' + fmtDayAmount(Math.max(0, ent.casualDays - usedCasualDays)) + ' days remaining.', true);
 				return;
 			}
 		}
