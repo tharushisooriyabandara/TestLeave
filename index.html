@@ -705,8 +705,8 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		try {
 			const profile = await fetchProfileByPin(pin);
 			if (!profile) {
-				setGatePinError('That PIN was not found. Try again or ask an administrator.');
-				showToast('PIN not found. Check your PIN or ask an administrator.', true);
+				setGatePinError('Invalid PIN. Try again.');
+				showToast('Invalid PIN.', true);
 				if (pinInp) pinInp.focus();
 				return;
 			}
