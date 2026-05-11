@@ -533,7 +533,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		} catch (err) {
 			const msg = String(err.message || '');
 			if (/duplicate|unique|23505/i.test(msg)) {
-				showToast('That PIN is already used by another user. Pick another.', true);
+				showToast('Invalid PIN. Try again.', true);
 			} else {
 				showToast('Could not save: ' + msg, true);
 			}
