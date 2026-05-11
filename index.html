@@ -24,6 +24,8 @@
 		.my-summary th { background: rgba(255,255,255,0.15); }
 		.my-summary td { border-color: rgba(255,255,255,0.2); }
 		.sub { font-size: 0.9rem; color: #555; }
+		.period-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; }
+		.period-year-badge { font-weight: 600; color: var(--primary); font-size: 0.95rem; margin: 0; }
 		.form-row { margin-bottom: 0.75rem; }
 		.form-row label { display: block; font-weight: 600; margin-bottom: 0.25rem; color: var(--primary); }
 		.form-row input, .form-row select { padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; width: 100%; max-width: 280px; }
@@ -121,11 +123,15 @@
 
 <div id="editProfileModal" class="modal-overlay" aria-hidden="true">
 	<div class="modal-card">
-		<h3>Your name &amp; PIN</h3>
-		<p class="sub" style="margin-top:-0.5rem;">Update how your name appears. Leave PIN fields empty to keep your current PIN.</p>
+		<h3>Your profile</h3>
+		<p class="sub" style="margin-top:-0.5rem;">Update your name and joining date. Leave PIN fields empty to keep your current PIN.</p>
 		<div class="form-row">
 			<label for="editProfileName">Full name</label>
 			<input type="text" id="editProfileName" maxlength="120" required>
+		</div>
+		<div class="form-row">
+			<label for="editProfileJoinDate">Join date</label>
+			<input type="date" id="editProfileJoinDate" required>
 		</div>
 		<div class="form-row">
 			<label for="editProfilePinNew">New 4-digit PIN (optional)</label>
@@ -219,11 +225,14 @@
 	<section class="card">
 		<div class="card-head">Leave summary — <span id="periodRange">—</span></div>
 		<div class="card-body">
-			<p class="sub">
-				<label for="periodFromInput">From:</label>
-				<input type="date" id="periodFromInput">
-				<label for="periodToInput" style="margin-left:0.75rem;">To:</label>
-				<input type="date" id="periodToInput">
+			<p class="sub period-filter-row">
+				<span style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:0.35rem 0.75rem;">
+					<label for="periodFromInput">From:</label>
+					<input type="date" id="periodFromInput">
+					<label for="periodToInput">To:</label>
+					<input type="date" id="periodToInput">
+				</span>
+				<span id="periodLeaveYearBadge" class="period-year-badge" aria-live="polite"></span>
 			</p>
 			<div class="balance-grid">
 				<div class="balance-box">
@@ -249,6 +258,11 @@
 	<section class="card">
 		<div class="card-head">Add Leave</div>
 		<div class="card-body">
+			<div id="leaveManageUserRow" class="form-row" style="display:none;">
+				<label for="leaveManageUserSelect">Leave records for</label>
+				<select id="leaveManageUserSelect"></select>
+			</div>
+			<p id="leaveManageUserHint" class="sub" style="display:none;margin:-0.35rem 0 0.75rem 0;">As admin, choose whose leave you are viewing or adding. Join date and balances apply to this person.</p>
 			<form id="leaveForm">
 				<div class="form-row">
 					<label for="leaveType">Leave type</label>
@@ -282,7 +296,7 @@
 
 			<hr style="margin:1.25rem 0;border:none;border-top:1px solid var(--border);">
 
-			<p><strong>My leave entries</strong> <span class="sub" id="loadingMsg"></span></p>
+			<p><strong id="leaveEntriesHeading">My leave entries</strong> <span class="sub" id="loadingMsg"></span></p>
 			<table id="leaveList">
 				<thead>
 					<tr><th>Date</th><th>Type</th><th>Full/Half</th><th>Days</th><th>Notes</th><th></th></tr>
@@ -450,6 +464,10 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		if (addBtn) addBtn.style.display = adm ? 'inline-block' : 'none';
 		const badge = document.getElementById('adminBadge');
 		if (badge) badge.style.display = adm ? 'inline' : 'none';
+		const leaveRow = document.getElementById('leaveManageUserRow');
+		const leaveHint = document.getElementById('leaveManageUserHint');
+		if (leaveRow) leaveRow.style.display = adm ? 'block' : 'none';
+		if (leaveHint) leaveHint.style.display = adm ? 'block' : 'none';
 	}
 
 	function applyProfileSession(profile) {
@@ -488,6 +506,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			document.getElementById('editProfileName').value = getProfileName();
 			document.getElementById('editProfilePinNew').value = '';
 			document.getElementById('editProfilePinConfirm').value = '';
+			document.getElementById('editProfileJoinDate').value = fmtIsoLocal(getJoinDate());
 			document.getElementById('editProfileName').focus();
 		}
 	}
@@ -499,13 +518,18 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			return;
 		}
 		const name = document.getElementById('editProfileName').value.trim();
+		const joinDateVal = document.getElementById('editProfileJoinDate').value;
 		const pinNew = document.getElementById('editProfilePinNew').value.trim();
 		const pin2 = document.getElementById('editProfilePinConfirm').value.trim();
 		if (!name) {
 			showToast('Enter your full name.', true);
 			return;
 		}
-		let patch = { name: name };
+		if (!joinDateVal || joinDateVal.length < 10) {
+			showToast('Choose your join date.', true);
+			return;
+		}
+		let patch = { name: name, join_date: joinDateVal };
 		if (pinNew || pin2) {
 			if (!validatePin(pinNew)) {
 				showToast('New PIN must be exactly 4 digits.', true);
@@ -520,6 +544,9 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		try {
 			await patchMyProfile(patch);
 			setProfileName(name);
+			setJoinDate(joinDateVal);
+			const ji = document.getElementById('joinDateInput');
+			if (ji) ji.value = joinDateVal;
 			const nameEl = document.getElementById('loggedInName');
 			if (nameEl) nameEl.textContent = name;
 			if (patch.pin) {
@@ -529,6 +556,10 @@ Admin user list selects pin — restrict API keys / RLS in production.
 				showToast('Profile updated ✓');
 			}
 			updateAdminUi();
+			if (isAdmin()) await populateLeaveManageUserSelect();
+			renderEntitlementTable();
+			initRangeInputs();
+			await refreshTable();
 			openEditProfileModal(false);
 		} catch (err) {
 			const msg = String(err.message || '');
@@ -542,6 +573,15 @@ Admin user list selects pin — restrict API keys / RLS in production.
 
 	function escHtml(s) {
 		return String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
+	}
+
+	/** Profile whose leave rows are loaded and saved (admin can pick another non-admin user). */
+	function getLeaveSubjectUserId() {
+		if (!isAdmin()) return getUserId();
+		const sel = document.getElementById('leaveManageUserSelect');
+		if (!sel || !sel.options.length) return getUserId();
+		const v = String(sel.value || '').trim();
+		return v || getUserId();
 	}
 
 	function openAdminUsersModal(open) {
@@ -666,6 +706,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId), { method: 'DELETE' });
 			showToast('User removed ✓');
 			await refreshAdminUsersList();
+			await populateLeaveManageUserSelect();
 			await refreshTable();
 		} catch (err) {
 			showToast('Remove failed: ' + err.message, true);
@@ -713,7 +754,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			clearGatePinError();
 			sessionStorage.setItem(STORAGE_KEY_SESSION_PIN, pin.trim());
 			applyProfileSession(profile);
-			bootMainAppAfterLogin();
+			await bootMainAppAfterLogin();
 			showToast('Welcome, ' + (profile.name || '') + ' ✓');
 		} catch (err) {
 			setGatePinError('Could not sign in: ' + err.message);
@@ -739,6 +780,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		try {
 			await insertProfile({ id: id, name: name, pin: pin, join_date: joinDate, role: 'user' });
 			openAddUserModal(false);
+			await populateLeaveManageUserSelect();
 			showToast('User profile created for ' + name + ' ✓ They can sign in with their PIN.');
 		} catch (err) {
 			const msg = String(err.message || '');
@@ -751,17 +793,19 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	let joinDateChangeAttached = false;
-	function bootMainAppAfterLogin() {
+	async function bootMainAppAfterLogin() {
 		const joinInp = document.getElementById('joinDateInput');
-		const j = getJoinDate();
-		joinInp.value = j.getFullYear() + '-' + String(j.getMonth()+1).padStart(2,'0') + '-' + String(j.getDate()).padStart(2,'0');
 		if (!joinDateChangeAttached) {
 			joinDateChangeAttached = true;
 			joinInp.onchange = async () => {
 				if (joinInp.value && joinInp.value.length >= 10) {
-					setJoinDate(joinInp.value);
+					const targetId = getLeaveSubjectUserId();
+					if (!targetId) return;
+					if (targetId === getUserId()) setJoinDate(joinInp.value);
+					const sel = document.getElementById('leaveManageUserSelect');
+					if (sel && sel.selectedOptions[0]) sel.selectedOptions[0].setAttribute('data-join-date', joinInp.value);
 					try {
-						await patchProfileJoinDate(getUserId(), joinInp.value);
+						await patchProfileJoinDate(targetId, joinInp.value);
 					} catch (e) {
 						showToast('Join date saved locally; profile sync failed: ' + e.message, true);
 					}
@@ -771,23 +815,120 @@ Admin user list selects pin — restrict API keys / RLS in production.
 				}
 			};
 		}
+		await populateLeaveManageUserSelect();
+		const j = getLeaveSubjectJoinDate();
+		joinInp.value = j.getFullYear() + '-' + String(j.getMonth()+1).padStart(2,'0') + '-' + String(j.getDate()).padStart(2,'0');
 		renderEntitlementTable();
 		initRangeInputs();
+		updateLeaveEntriesHeading();
 		refreshTable();
 	}
-	const getJoinDate = () => new Date((localStorage.getItem(STORAGE_KEY_JOIN) || DEFAULT_JOIN));
+	/** Parse YYYY-MM-DD as local calendar date (avoids UTC shifts from `new Date(iso)`). */
+	function parseYmdLocal(iso) {
+		const p = String(iso || '').slice(0, 10).split('-');
+		if (p.length !== 3) return null;
+		const y = parseInt(p[0], 10), mo = parseInt(p[1], 10) - 1, day = parseInt(p[2], 10);
+		if (Number.isNaN(y) || Number.isNaN(mo) || Number.isNaN(day)) return null;
+		return new Date(y, mo, day);
+	}
+	const getJoinDate = () => {
+		const raw = localStorage.getItem(STORAGE_KEY_JOIN) || DEFAULT_JOIN;
+		const d = parseYmdLocal(String(raw).slice(0, 10));
+		return d || parseYmdLocal(String(DEFAULT_JOIN).slice(0, 10)) || new Date();
+	};
 	const setJoinDate = s => { if (s && s.length >= 10) localStorage.setItem(STORAGE_KEY_JOIN, s); };
+
+	function getLeaveSubjectJoinDate() {
+		if (isAdmin()) {
+			const sel = document.getElementById('leaveManageUserSelect');
+			if (sel && sel.options.length && sel.selectedOptions[0]) {
+				const jd = sel.selectedOptions[0].getAttribute('data-join-date');
+				const d = jd && parseYmdLocal(String(jd).slice(0, 10));
+				if (d) return d;
+			}
+		}
+		return getJoinDate();
+	}
+
+	async function populateLeaveManageUserSelect() {
+		const sel = document.getElementById('leaveManageUserSelect');
+		if (!sel) return;
+		if (!isAdmin()) {
+			sel.innerHTML = '';
+			return;
+		}
+		try {
+			const rows = await sbFetch('/rest/v1/leave_profiles?select=id,name,join_date,role&order=name.asc', { method: 'GET' });
+			const list = Array.isArray(rows) ? rows : [];
+			const mine = getUserId();
+			const filtered = list.filter(p => p.id === mine || String(p.role || 'user').toLowerCase() !== 'admin');
+			filtered.sort((a, b) => {
+				if (a.id === mine) return -1;
+				if (b.id === mine) return 1;
+				return String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' });
+			});
+			const prev = sel.value;
+			sel.innerHTML = filtered.map(p => {
+				const jd = p.join_date ? String(p.join_date).slice(0, 10) : DEFAULT_JOIN.slice(0, 10);
+				const label = p.id === mine ? ('Me (' + (p.name || 'Self') + ')') : String(p.name || p.id);
+				return '<option value="' + escHtml(p.id) + '" data-join-date="' + escHtml(jd) + '">' + escHtml(label) + '</option>';
+			}).join('');
+			if (prev && filtered.some(p => p.id === prev)) sel.value = prev;
+			else sel.value = mine;
+		} catch (e) {
+			showToast('Could not load profiles for leave selector: ' + e.message, true);
+			sel.innerHTML = '';
+		}
+		updateLeaveEntriesHeading();
+	}
+
+	function updateLeaveEntriesHeading() {
+		const el = document.getElementById('leaveEntriesHeading');
+		if (!el) return;
+		const sid = getUserId();
+		const subj = getLeaveSubjectUserId();
+		if (isAdmin() && subj && sid && subj !== sid) {
+			const sel = document.getElementById('leaveManageUserSelect');
+			const opt = sel && sel.selectedOptions[0];
+			el.textContent = 'Leave entries — ' + (opt ? opt.textContent : subj);
+		} else {
+			el.textContent = 'My leave entries';
+		}
+	}
+
+	function onLeaveManageUserChange() {
+		clearEditMode();
+		const sel = document.getElementById('leaveManageUserSelect');
+		const joinInp = document.getElementById('joinDateInput');
+		const opt = sel && sel.selectedOptions[0];
+		const jd = opt && opt.getAttribute('data-join-date');
+		if (joinInp && jd && jd.length >= 10) joinInp.value = jd.slice(0, 10);
+		if (sel && sel.value === getUserId()) setJoinDate(joinInp.value);
+		renderEntitlementTable();
+		initRangeInputs();
+		updateLeaveEntriesHeading();
+		refreshTable();
+	}
+
+	function ensurePeriodCoversDate(isoDate) {
+		if (!isoDate || isoDate.length < 10) return;
+		const fromInp = document.getElementById('periodFromInput');
+		const toInp = document.getElementById('periodToInput');
+		if (!fromInp || !toInp || !fromInp.value || !toInp.value) return;
+		if (isoDate < fromInp.value) fromInp.value = isoDate;
+		if (isoDate > toInp.value) toInp.value = isoDate;
+	}
 
 	// ── Period helpers ─────────────────────────────────────────────
 	function getPeriodStart(year) {
-		const j = getJoinDate();
-		return new Date(parseInt(year), j.getMonth(), j.getDate());
+		const j = getLeaveSubjectJoinDate();
+		return new Date(parseInt(year, 10), j.getMonth(), j.getDate());
 	}
+	/** Inclusive end = same calendar month/day one year after period start (e.g. join 28 May 2025 → period for year 2026 is 28 May 2026 – 28 May 2027). */
 	function getPeriodEnd(year) {
-		const s = getPeriodStart(year);
-		const e = new Date(s.getFullYear()+1, s.getMonth(), s.getDate());
-		e.setDate(e.getDate()-1);
-		return e;
+		const j = getLeaveSubjectJoinDate();
+		const y = parseInt(year, 10);
+		return new Date(y + 1, j.getMonth(), j.getDate());
 	}
 	function fmt(d) {
 		return d.getFullYear() + ' ' + MONTHS[d.getMonth()] + ' ' + String(d.getDate()).padStart(2,'0');
@@ -804,26 +945,81 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	function getPeriodRangeYmd(year) {
 		return fmtYmd(getPeriodStart(year)) + ' - ' + fmtYmd(getPeriodEnd(year));
 	}
-	function getPeriodYear(dateStr) {
-		const d = new Date(dateStr);
-		if (isNaN(d)) return null;
-		const j = getJoinDate();
-		const jn = new Date(j.getFullYear(), j.getMonth(), j.getDate());
-		if (d < jn) return null;
-		let ps = new Date(jn);
-		for (let n = 0; n < 50; n++) {
-			const pe = new Date(ps.getFullYear()+1, ps.getMonth(), ps.getDate());
-			pe.setDate(pe.getDate()-1);
-			if (d >= ps && d <= pe) return ps.getFullYear();
-			ps = new Date(ps.getFullYear()+1, ps.getMonth(), ps.getDate());
+	/** Whole anniversaries after join (join day = 0). Used to break ties on inclusive period boundaries. */
+	function anniversaryIndexAfterJoin(d, joinNorm) {
+		const jm = joinNorm.getMonth(), jd = joinNorm.getDate(), jy = joinNorm.getFullYear();
+		for (let k = 0; k < 80; k++) {
+			const ann = new Date(jy + k, jm, jd);
+			if (ann.getTime() === d.getTime()) return k;
 		}
 		return null;
+	}
+
+	/**
+	 * Leave-year label Y: inclusive [anniversary Y, anniversary Y+1].
+	 * Shared boundary days (e.g. 3 Mar 2026): 1st anniversary → start of new leave year (higher Y);
+	 * later anniversaries → still count as end of the lower leave year so To dates stay correct.
+	 */
+	function getPeriodYear(dateStr) {
+		const d = parseYmdLocal(dateStr);
+		if (!d) return null;
+		const j = getLeaveSubjectJoinDate();
+		const jm = j.getMonth(), jd = j.getDate(), jy = j.getFullYear();
+		const jn = new Date(jy, jm, jd);
+		if (d < jn) return null;
+		const matches = [];
+		for (let Y = jy; Y < jy + 55; Y++) {
+			const ps = new Date(Y, jm, jd);
+			const pe = new Date(Y + 1, jm, jd);
+			if (d >= ps && d <= pe) matches.push(Y);
+		}
+		if (!matches.length) return null;
+		if (matches.length === 1) return matches[0];
+		const lo = matches[0];
+		const hi = matches[matches.length - 1];
+		const k = anniversaryIndexAfterJoin(d, jn);
+		if (k !== null && k >= 1) {
+			if (k === 1) return hi;
+			return lo;
+		}
+		return hi;
+	}
+
+	function ordinalLeaveYear(n) {
+		if (n == null || n < 1) return '';
+		const v = n % 100;
+		if (v >= 11 && v <= 13) return n + 'th';
+		switch (n % 10) {
+			case 1: return n + 'st';
+			case 2: return n + 'nd';
+			case 3: return n + 'rd';
+			default: return n + 'th';
+		}
+	}
+
+	/** Maps current From date to 1st / 2nd / … leave year since join (same rules as periods above). */
+	function updatePeriodLeaveYearLabel() {
+		const el = document.getElementById('periodLeaveYearBadge');
+		if (!el) return;
+		const fromDate = document.getElementById('periodFromInput').value;
+		if (!fromDate || fromDate.length < 10) {
+			el.textContent = '';
+			return;
+		}
+		const py = getPeriodYear(fromDate);
+		if (py == null) {
+			el.textContent = '(before join date)';
+			return;
+		}
+		const jy = getLeaveSubjectJoinDate().getFullYear();
+		const n = py - jy + 1;
+		el.textContent = '(' + ordinalLeaveYear(n) + ' year)';
 	}
 
 	// ── Entitlement ────────────────────────────────────────────────
 	// Casual balances are shown in days (0.5 increments). Period 0 & 1: no annual, 6 casual days. Period 2+ onward: annual 10, casual 7.
 	function getEntitlement(year) {
-		const idx = parseInt(year) - getJoinDate().getFullYear();
+		const idx = parseInt(year) - getLeaveSubjectJoinDate().getFullYear();
 		if (idx === 0 || idx === 1) return { annual: 0, casualDays: 6 };
 		return { annual: 10, casualDays: 7 };
 	}
@@ -843,7 +1039,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	function renderEntitlementTable() {
-		const j = getJoinDate();
+		const j = getLeaveSubjectJoinDate();
 		const jy = j.getFullYear();
 		document.getElementById('summaryJoinDate').textContent = fmt(j);
 		document.getElementById('entitlementTableBody').innerHTML =
@@ -871,7 +1067,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	async function fetchEntries(year) {
-		const userId = getUserId();
+		const userId = getLeaveSubjectUserId();
 		if (!userId) return [];
 		const ps = fmtIsoLocal(getPeriodStart(year));
 		const pe = fmtIsoLocal(getPeriodEnd(year));
@@ -882,7 +1078,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		);
 	}
 	async function fetchEntriesByRange(fromDate, toDate) {
-		const userId = getUserId();
+		const userId = getLeaveSubjectUserId();
 		if (!userId) return [];
 		return await sbFetch(
 			'/rest/v1/leave_entries?user_id=eq.' + encodeURIComponent(userId) +
@@ -1016,6 +1212,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	async function refreshTable() {
 		const fromDate = document.getElementById('periodFromInput').value;
 		const toDate = document.getElementById('periodToInput').value;
+		updatePeriodLeaveYearLabel();
 		if (!fromDate || !toDate) return;
 		if (fromDate > toDate) {
 			showToast('Invalid period: "From" date must be before "To" date.', true);
@@ -1031,6 +1228,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			const entries = await fetchEntriesByRange(fromDate, toDate);
 			renderList(entries);
 			renderBalance(fromDate, toDate, entries);
+			updateLeaveEntriesHeading();
 		} catch(err) {
 			showToast('Load failed: ' + err.message, true);
 		}
@@ -1038,17 +1236,20 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	// ── Period range inputs ────────────────────────────────────────
+	/** Default From/To = the leave-year window that contains today's date (local). If today is before join, use join year's window. */
 	function initRangeInputs() {
-		const joinYear = getJoinDate().getFullYear();
-		// Default to the second period from join date (joinYear + 1).
-		// Example: join 2025/03/03 => 2026/03/03 - 2027/03/02.
-		const defaultYear = joinYear + 1;
+		const todayIso = fmtIsoLocal(new Date());
+		let periodYear = getPeriodYear(todayIso);
+		if (periodYear == null) {
+			periodYear = getLeaveSubjectJoinDate().getFullYear();
+		}
 		const fromInp = document.getElementById('periodFromInput');
 		const toInp = document.getElementById('periodToInput');
-		fromInp.value = fmtIsoLocal(getPeriodStart(defaultYear));
-		toInp.value = fmtIsoLocal(getPeriodEnd(defaultYear));
+		fromInp.value = fmtIsoLocal(getPeriodStart(periodYear));
+		toInp.value = fmtIsoLocal(getPeriodEnd(periodYear));
 		fromInp.onchange = refreshTable;
 		toInp.onchange = refreshTable;
+		updatePeriodLeaveYearLabel();
 	}
 
 	document.getElementById('cancelEditBtn').onclick = function() {
@@ -1059,8 +1260,9 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	// ── Form submit ────────────────────────────────────────────────
 	document.getElementById('leaveForm').onsubmit = async function(ev) {
 		ev.preventDefault();
-		const userId = getUserId();
-		if (!userId) { showToast('Please sign in with your PIN first.', true); return; }
+		if (!getUserId()) { showToast('Please sign in with your PIN first.', true); return; }
+		const subjectId = getLeaveSubjectUserId();
+		if (!subjectId) { showToast('Choose whose leave you are managing.', true); return; }
 
 		const type = document.getElementById('leaveType').value;
 		const leaveDate = document.getElementById('leaveDate').value;
@@ -1072,7 +1274,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 
 		const year = getPeriodYear(leaveDate);
 		if (year == null) {
-			showToast('Leave date must be on or after joining date (' + fmt(getJoinDate()) + ').', true);
+			showToast('Leave date must be on or after this person\'s joining date (' + fmt(getLeaveSubjectJoinDate()) + ').', true);
 			return;
 		}
 
@@ -1116,7 +1318,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 					date: leaveDate,
 					full_or_half: fullOrHalf,
 					notes: notes,
-					join_date: fmtIsoLocal(getJoinDate())
+					join_date: fmtIsoLocal(getLeaveSubjectJoinDate())
 				});
 				document.getElementById('leaveForm').reset();
 				clearEditMode(false);
@@ -1126,18 +1328,19 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			} else {
 				await insertEntry({
 					id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
-					user_id: userId,
+					user_id: subjectId,
 					type: type,
 					date: leaveDate,
 					full_or_half: fullOrHalf,
 					notes: notes,
-					join_date: fmtIsoLocal(getJoinDate())
+					join_date: fmtIsoLocal(getLeaveSubjectJoinDate())
 				});
 				document.getElementById('leaveForm').reset();
 				statusMsg.textContent = 'Saved ✓';
 				statusMsg.style.color = '#0a5f0a';
 				showToast('Leave entry saved ✓');
 			}
+			ensurePeriodCoversDate(leaveDate);
 			await refreshTable();
 		} catch(err) {
 			statusMsg.textContent = 'Error: ' + err.message;
@@ -1191,6 +1394,8 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		document.getElementById('addUserModal').addEventListener('click', function(ev) {
 			if (ev.target === this) openAddUserModal(false);
 		});
+
+		document.getElementById('leaveManageUserSelect').addEventListener('change', onLeaveManageUserChange);
 
 		document.getElementById('gatePinInput').focus();
 	})();
