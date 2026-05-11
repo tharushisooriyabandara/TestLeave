@@ -62,6 +62,8 @@
 		.gate-card h2 { margin: 0 0 0.35rem 0; font-size: 1.35rem; color: var(--primary); }
 		.gate-card .gate-sub { margin: 0 0 1.25rem 0; font-size: 0.9rem; color: #555; }
 		.pin-field { width: 100%; padding: 0.65rem 0.75rem; font-size: 1.35rem; letter-spacing: 0.35em; text-align: center; border: 2px solid var(--border); border-radius: 8px; font-weight: 700; }
+		.pin-field.pin-invalid { border-color: #c00; }
+		.gate-error { color: #c00; font-size: 0.9rem; margin-top: 0.65rem; font-weight: 600; line-height: 1.35; }
 		.gate-actions { display: flex; flex-wrap: wrap; gap: 0.5rem; margin-top: 1rem; }
 		.gate-actions .btn { flex: 1; min-width: 120px; }
 		.modal-overlay { position: fixed; inset: 0; z-index: 1100; background: rgba(0,0,0,0.45); display: none; align-items: center; justify-content: center; padding: 1rem; }
@@ -82,7 +84,8 @@
 		<h2>Delivergate — Leave</h2>
 		<p class="gate-sub">Enter your 4-digit PIN to open your profile. New accounts are created by an administrator after sign-in.</p>
 		<label for="gatePinInput" class="sub" style="display:block;margin-bottom:0.35rem;font-weight:600;color:var(--primary);">PIN</label>
-		<input type="password" id="gatePinInput" class="pin-field" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••">
+		<input type="password" id="gatePinInput" class="pin-field" inputmode="numeric" pattern="[0-9]*" maxlength="4" autocomplete="off" placeholder="••••" aria-invalid="false" aria-describedby="gatePinError">
+		<div id="gatePinError" class="gate-error" role="alert" aria-live="polite"></div>
 		<div class="gate-actions">
 			<button type="button" class="btn btn-primary" id="gateContinueBtn">Continue</button>
 		</div>
@@ -380,6 +383,21 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		return /^\d{4}$/.test(String(pin || '').trim());
 	}
 
+	function setGatePinError(message) {
+		const box = document.getElementById('gatePinError');
+		const inp = document.getElementById('gatePinInput');
+		const msg = String(message || '').trim();
+		if (box) box.textContent = msg;
+		if (inp) {
+			inp.classList.toggle('pin-invalid', !!msg);
+			inp.setAttribute('aria-invalid', msg ? 'true' : 'false');
+		}
+	}
+
+	function clearGatePinError() {
+		setGatePinError('');
+	}
+
 	async function fetchProfileByPin(pin) {
 		const p = String(pin || '').trim();
 		const rows = await sbFetch(
@@ -454,6 +472,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		localStorage.removeItem(STORAGE_KEY_PROFILE_ROLE);
 		sessionStorage.removeItem(STORAGE_KEY_SESSION_PIN);
 		showMainApp(false);
+		clearGatePinError();
 		const pinInp = document.getElementById('gatePinInput');
 		if (pinInp) pinInp.value = '';
 		const tbody = document.getElementById('leaveListBody');
@@ -676,22 +695,30 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	async function gateLoginWithPin() {
 		const pinInp = document.getElementById('gatePinInput');
 		const pin = pinInp ? pinInp.value : '';
+		clearGatePinError();
 		if (!validatePin(pin)) {
+			setGatePinError('Enter exactly 4 digits (numbers only).');
 			showToast('Enter a 4-digit PIN.', true);
+			if (pinInp) pinInp.focus();
 			return;
 		}
 		try {
 			const profile = await fetchProfileByPin(pin);
 			if (!profile) {
+				setGatePinError('That PIN was not found. Try again or ask an administrator.');
 				showToast('PIN not found. Check your PIN or ask an administrator.', true);
+				if (pinInp) pinInp.focus();
 				return;
 			}
+			clearGatePinError();
 			sessionStorage.setItem(STORAGE_KEY_SESSION_PIN, pin.trim());
 			applyProfileSession(profile);
 			bootMainAppAfterLogin();
 			showToast('Welcome, ' + (profile.name || '') + ' ✓');
 		} catch (err) {
+			setGatePinError('Could not sign in: ' + err.message);
 			showToast('Sign-in failed: ' + err.message, true);
+			if (pinInp) pinInp.focus();
 		}
 	}
 
@@ -1127,6 +1154,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		showMainApp(false);
 
 		document.getElementById('gateContinueBtn').onclick = gateLoginWithPin;
+		document.getElementById('gatePinInput').addEventListener('input', clearGatePinError);
 		document.getElementById('gatePinInput').addEventListener('keydown', function(e) {
 			if (e.key === 'Enter') {
 				e.preventDefault();
