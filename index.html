@@ -945,20 +945,11 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	function getPeriodRangeYmd(year) {
 		return fmtYmd(getPeriodStart(year)) + ' - ' + fmtYmd(getPeriodEnd(year));
 	}
-	/** Whole anniversaries after join (join day = 0). Used to break ties on inclusive period boundaries. */
-	function anniversaryIndexAfterJoin(d, joinNorm) {
-		const jm = joinNorm.getMonth(), jd = joinNorm.getDate(), jy = joinNorm.getFullYear();
-		for (let k = 0; k < 80; k++) {
-			const ann = new Date(jy + k, jm, jd);
-			if (ann.getTime() === d.getTime()) return k;
-		}
-		return null;
-	}
-
 	/**
-	 * Leave-year label Y: inclusive [anniversary Y, anniversary Y+1].
-	 * Shared boundary days (e.g. 3 Mar 2026): 1st anniversary → start of new leave year (higher Y);
-	 * later anniversaries → still count as end of the lower leave year so To dates stay correct.
+	 * Calendar year Y of the leave-year window [anniversary Y, anniversary Y+1) conceptually;
+	 * stored ranges use inclusive endpoints, so on an anniversary date two windows overlap.
+	 * We always assign that day to the **new** leave-year (higher Y) — the period that starts
+	 * on that date — so year 3 begins on the 2nd anniversary, entitlements and badges match policy.
 	 */
 	function getPeriodYear(dateStr) {
 		const d = parseYmdLocal(dateStr);
@@ -975,14 +966,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		}
 		if (!matches.length) return null;
 		if (matches.length === 1) return matches[0];
-		const lo = matches[0];
-		const hi = matches[matches.length - 1];
-		const k = anniversaryIndexAfterJoin(d, jn);
-		if (k !== null && k >= 1) {
-			if (k === 1) return hi;
-			return lo;
-		}
-		return hi;
+		return matches[matches.length - 1];
 	}
 
 	function ordinalLeaveYear(n) {
@@ -1017,10 +1001,24 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	// ── Entitlement ────────────────────────────────────────────────
-	// Casual balances are shown in days (0.5 increments). Period 0 & 1: no annual, 6 casual days. Period 2+ onward: annual 10, casual 7.
-	function getEntitlement(year) {
-		const idx = parseInt(year) - getLeaveSubjectJoinDate().getFullYear();
-		if (idx === 0 || idx === 1) return { annual: 0, casualDays: 6 };
+	/**
+	 * Policy (aligned with section 2 on this page):
+	 * - "Leave year" = rolling 12 months from join date (anniversary), not Jan–Dec.
+	 * - 1st and 2nd leave-years: no annual entitlement; casual cap 6 days each year.
+	 * - From the 3rd leave-year onward: annual 10 days, casual 7 days.
+	 *
+	 * `periodStartYear` is Y from getPeriodYear(...) — the calendar year of the anniversary
+	 * that starts that leave-year window. Example: join 2024-05-14 → Y=2026 starts the 3rd
+	 * leave-year; balances use annual 10 and casual 7 for dates in that window.
+	 */
+	function getLeaveYearNumber(periodStartYear) {
+		const y = parseInt(periodStartYear, 10);
+		const jy = getLeaveSubjectJoinDate().getFullYear();
+		return y - jy + 1;
+	}
+	function getEntitlement(periodStartYear) {
+		const leaveYearNum = getLeaveYearNumber(periodStartYear);
+		if (leaveYearNum <= 2) return { annual: 0, casualDays: 6 };
 		return { annual: 10, casualDays: 7 };
 	}
 
