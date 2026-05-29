@@ -9,6 +9,29 @@
 		* { box-sizing: border-box; }
 		body { font-family: 'Segoe UI', system-ui, sans-serif; margin: 0; padding: 0; color: var(--text); line-height: 1.5; background: #f8f9fa; }
 		.container { max-width: 900px; margin: 0 auto; padding: 1.5rem; }
+		.app-shell { max-width: 1200px; margin: 0 auto; padding: 0 1.5rem 1.5rem; display: grid; grid-template-columns: 270px 1fr; gap: 1.25rem; align-items: start; }
+		@media (max-width: 900px) { .app-shell { grid-template-columns: 1fr; } }
+		.app-main .container { max-width: none; margin: 0; padding: 0; }
+		.profile-sidebar { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); padding: 1.15rem 1.1rem; position: sticky; top: 1rem; z-index: 2; }
+		.profile-sidebar h3 { margin: 0 0 0.2rem 0; color: var(--primary); font-size: 1.05rem; line-height: 1.3; }
+		.profile-sidebar .sidebar-label { font-size: 0.78rem; font-weight: 700; text-transform: uppercase; letter-spacing: 0.04em; color: #888; margin: 0 0 0.65rem 0; }
+		.sidebar-viewing-banner { background: var(--primary-light); border-radius: 6px; padding: 0.55rem 0.65rem; font-size: 0.84rem; margin-bottom: 0.85rem; color: var(--primary); line-height: 1.35; }
+		.sidebar-viewing-banner strong { display: block; font-size: 0.95rem; }
+		.career-timeline { margin: 0; padding: 0; list-style: none; }
+		.career-timeline li { position: relative; padding: 0 0 1.15rem 1.4rem; border-left: 2px solid var(--primary-light); margin-left: 0.35rem; }
+		.career-timeline li:last-child { border-left-color: transparent; padding-bottom: 0; }
+		.career-timeline li::before { content: ''; position: absolute; left: -6px; top: 0.25rem; width: 10px; height: 10px; border-radius: 50%; background: var(--primary); border: 2px solid white; box-shadow: 0 0 0 1px var(--primary-light); }
+		.career-timeline li.current::before { background: #0a5f0a; box-shadow: 0 0 0 2px #c8e6c9; }
+		.career-timeline .role-title { font-weight: 600; color: var(--text); font-size: 0.92rem; line-height: 1.35; }
+		.career-timeline .role-dates { font-size: 0.82rem; color: #666; margin-top: 0.12rem; }
+		.career-timeline-empty { font-size: 0.88rem; color: #777; margin: 0; line-height: 1.4; }
+		.sidebar-actions { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 1rem; }
+		.sidebar-actions .btn-ghost { margin-left: 0; width: 100%; text-align: center; font-size: 0.82rem; cursor: pointer; }
+		.career-edit-row { display: grid; grid-template-columns: 1fr; gap: 0.5rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.65rem; background: #fafbfc; }
+		.career-edit-row .form-row { margin-bottom: 0.35rem; }
+		.career-edit-row .form-row input { max-width: none; }
+		.career-present-row { display: flex; align-items: center; gap: 0.4rem; font-size: 0.9rem; margin-top: 0.15rem; }
+		.career-present-row input { width: auto; max-width: none; }
 		header { background: var(--primary); color: white; padding: 1.25rem 1.5rem; margin: 0 0 1.5rem 0; }
 		header h1 { margin: 0; font-size: 1.5rem; }
 		.card { background: white; border-radius: 8px; box-shadow: 0 1px 3px rgba(0,0,0,0.08); margin-bottom: 1.25rem; overflow: hidden; }
@@ -49,11 +72,11 @@
 		.balance-cell .value { font-size: 1.5rem; font-weight: 700; color: var(--primary); }
 		.balance-cell.remain .value { color: #0a5f0a; }
 		.join-date-top { background: var(--primary); color: white; padding: 1rem 1.5rem; }
-		.join-date-top .inner { max-width: 900px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
+		.join-date-top .inner { max-width: 1200px; margin: 0 auto; display: flex; flex-wrap: wrap; align-items: center; gap: 0.75rem 1.25rem; }
 		.join-date-top label { margin: 0; font-weight: 600; font-size: 1rem; }
 		.join-date-top input[type="date"] { padding: 0.5rem 0.75rem; font-size: 1rem; min-height: 42px; border: none; border-radius: 6px; background: #fff; color: var(--text); cursor: pointer; }
 		.user-bar { background: #f0f4f8; border-bottom: 1px solid var(--border); padding: 0.6rem 1.5rem; }
-		.user-bar .inner { max-width: 900px; margin: 0 auto; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
+		.user-bar .inner { max-width: 1200px; margin: 0 auto; display: flex; align-items: center; gap: 1rem; flex-wrap: wrap; }
 		.user-bar label { font-weight: 600; color: var(--primary); font-size: 0.95rem; }
 		.user-bar input { padding: 0.4rem 0.6rem; border: 1px solid var(--border); border-radius: 4px; font-size: 0.95rem; min-width: 200px; }
 		.toast { position: fixed; bottom: 1.5rem; right: 1.5rem; background: #003366; color: white; padding: 0.75rem 1.25rem; border-radius: 6px; font-size: 0.95rem; z-index: 999; display: none; box-shadow: 0 2px 8px rgba(0,0,0,0.2); }
@@ -151,8 +174,9 @@
 <div id="adminUsersModal" class="modal-overlay" aria-hidden="true">
 	<div class="modal-card modal-wide">
 		<h3>All users</h3>
-		<p class="sub" style="margin-top:-0.5rem;">View profiles and PINs, reset a PIN, or remove a user (their leave entries are deleted too).</p>
+		<p class="sub" style="margin-top:-0.5rem;">Add users, manage career timelines, reset PINs, or remove users.</p>
 		<p style="margin-bottom:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
+			<button type="button" class="btn btn-primary" id="adminAddUserBtn">Add user</button>
 			<button type="button" class="btn btn-primary" id="adminUsersRefreshBtn">Refresh</button>
 			<button type="button" class="btn btn-ghost" id="adminUsersCloseBtn">Close</button>
 		</p>
@@ -194,6 +218,21 @@
 	</div>
 </div>
 
+<div id="manageCareerModal" class="modal-overlay" aria-hidden="true">
+	<div class="modal-card modal-wide">
+		<h3>Career timeline — <span id="manageCareerForName">—</span></h3>
+		<p class="sub" style="margin-top:-0.5rem;">Add roles oldest-first when editing. The sidebar shows the latest role at the top. Mark the current role as Present.</p>
+		<div id="careerEditList"></div>
+		<p style="margin:0.75rem 0 0.5rem;display:flex;flex-wrap:wrap;gap:0.5rem;">
+			<button type="button" class="btn btn-ghost" id="careerAddRowBtn">+ Add role</button>
+		</p>
+		<div class="modal-actions">
+			<button type="button" class="btn btn-primary" id="careerSaveBtn">Save timeline</button>
+			<button type="button" class="btn btn-ghost" id="careerCancelBtn">Cancel</button>
+		</div>
+	</div>
+</div>
+
 <div id="mainApp">
 <div class="user-bar">
 	<div class="inner">
@@ -203,8 +242,7 @@
 		<span class="sub">Leave records are saved under your profile.</span>
 		<span style="flex:1;min-width:0.5rem;"></span>
 		<button type="button" class="btn-ghost" id="editProfileBtn">Reset Profile</button>
-		<button type="button" class="btn-ghost" id="adminUsersBtn" style="display:none;">Users</button>
-		<button type="button" class="btn-ghost" id="adminAddUserBtn" style="display:none;">Add user</button>
+		<button type="button" class="btn-ghost" id="adminUsersBtn" style="display:none;">Manage users</button>
 		<button type="button" class="btn-ghost" id="logoutBtn">Switch user</button>
 	</div>
 </div>
@@ -217,9 +255,22 @@
 </div>
 
 <header>
-	<div class="container"><h1>Leave Logs</h1></div>
+	<div class="container" style="max-width:1200px;margin:0 auto;padding:0 1.5rem;"><h1>Leave Logs</h1></div>
 </header>
 
+<div class="app-shell">
+<aside id="profileSidebar" class="profile-sidebar" aria-label="Profile and career timeline">
+	<p class="sidebar-label">Profile</p>
+	<h3 id="sidebarProfileName">—</h3>
+	<div id="sidebarViewingBanner" class="sidebar-viewing-banner" style="display:none;"></div>
+	<p class="sidebar-label" style="margin-top:0.85rem;">Career timeline</p>
+	<ul id="careerTimeline" class="career-timeline" aria-live="polite"></ul>
+	<p id="sidebarCareerEditLink" class="sub" style="display:none;margin-top:0.75rem;">
+		<button type="button" class="btn-ghost" id="sidebarManageCareerBtn" style="margin-left:0;width:100%;">Edit this person’s career</button>
+	</p>
+</aside>
+
+<div class="app-main">
 <div class="container">
 
 	<section class="card">
@@ -339,6 +390,8 @@
 
 	<p style="text-align:center;color:#666;font-size:0.875rem;margin-top:1.5rem;">Delivergate Pvt Ltd — Leave Policy (Policy No. 01)</p>
 </div>
+</div><!-- .app-main -->
+</div><!-- .app-shell -->
 </div><!-- #mainApp -->
 
 <div class="toast" id="toast"></div>
@@ -349,6 +402,10 @@ If remove fails with 401/403, add RLS policies, e.g.:
   create policy "anon delete entries" on leave_entries for delete using (true);
   create policy "anon delete profiles" on leave_profiles for delete using (true);
 Admin user list selects pin — restrict API keys / RLS in production.
+
+Career timeline (run once in Supabase SQL editor):
+  alter table leave_profiles add column if not exists career_timeline jsonb default '[]'::jsonb;
+Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-30"},{"title":"Associate Software Engineer","from":"2024-07-01","to":null}]
 -->
 
 <script>
@@ -460,14 +517,324 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		const adm = isAdmin();
 		const usersBtn = document.getElementById('adminUsersBtn');
 		if (usersBtn) usersBtn.style.display = adm ? 'inline-block' : 'none';
-		const addBtn = document.getElementById('adminAddUserBtn');
-		if (addBtn) addBtn.style.display = adm ? 'inline-block' : 'none';
 		const badge = document.getElementById('adminBadge');
 		if (badge) badge.style.display = adm ? 'inline' : 'none';
 		const leaveRow = document.getElementById('leaveManageUserRow');
 		const leaveHint = document.getElementById('leaveManageUserHint');
 		if (leaveRow) leaveRow.style.display = adm ? 'block' : 'none';
 		if (leaveHint) leaveHint.style.display = adm ? 'block' : 'none';
+	}
+
+	function getLeaveSubjectDisplayName() {
+		if (isAdmin()) {
+			const sel = document.getElementById('leaveManageUserSelect');
+			const opt = sel && sel.selectedOptions[0];
+			if (opt) return String(opt.textContent || '').replace(/^Me \(/, '').replace(/\)$/, '') || opt.textContent;
+		}
+		return getProfileName() || '—';
+	}
+
+	function parseCareerTimeline(raw) {
+		if (raw == null || raw === '') return [];
+		let arr = raw;
+		if (typeof raw === 'string') {
+			try { arr = JSON.parse(raw); } catch { return []; }
+		}
+		if (!Array.isArray(arr)) return [];
+		return arr
+			.filter(x => x && String(x.title || '').trim() && String(x.from || '').length >= 10)
+			.map(x => ({
+				title: String(x.title).trim(),
+				from: String(x.from).slice(0, 10),
+				to: x.to && String(x.to).length >= 10 ? String(x.to).slice(0, 10) : null
+			}))
+			.sort((a, b) => a.from.localeCompare(b.from) || String(a.title).localeCompare(String(b.title)));
+	}
+
+	/** Sidebar display: current role first, then newest to oldest. */
+	function sortCareerForDisplay(list) {
+		return list.slice().sort((a, b) => {
+			const aCur = !a.to ? 1 : 0;
+			const bCur = !b.to ? 1 : 0;
+			if (aCur !== bCur) return bCur - aCur;
+			return b.from.localeCompare(a.from) || String(b.title).localeCompare(String(a.title));
+		});
+	}
+
+	function fmtCareerShort(iso) {
+		const d = parseYmdLocal(String(iso || '').slice(0, 10));
+		if (!d) return String(iso || '');
+		return MONTHS[d.getMonth()].slice(0, 3) + ' ' + String(d.getDate()).padStart(2, '0') + ', ' + d.getFullYear();
+	}
+
+	function fmtCareerRange(from, to) {
+		return fmtCareerShort(from) + ' – ' + (to ? fmtCareerShort(to) : 'Present');
+	}
+
+	function renderCareerTimelineList(items) {
+		const ul = document.getElementById('careerTimeline');
+		if (!ul) return;
+		const list = sortCareerForDisplay(parseCareerTimeline(items));
+		if (!list.length) {
+			ul.innerHTML = '<li class="career-timeline-empty">No roles recorded yet.</li>';
+			return;
+		}
+		ul.innerHTML = list.map((item) => {
+			const isCurrent = !item.to;
+			return '<li class="' + (isCurrent ? 'current' : '') + '">' +
+				'<div class="role-title">' + escHtml(item.title) + '</div>' +
+				'<div class="role-dates">' + escHtml(fmtCareerRange(item.from, item.to)) + '</div>' +
+				'</li>';
+		}).join('');
+	}
+
+	async function fetchProfileById(profileId) {
+		if (!profileId) return null;
+		try {
+			const rows = await sbFetch(
+				'/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId) + '&select=id,name,join_date,career_timeline',
+				{ method: 'GET' }
+			);
+			return Array.isArray(rows) && rows.length ? rows[0] : null;
+		} catch (err) {
+			if (/career_timeline|column|42703|400/i.test(String(err.message || ''))) {
+				const rows = await sbFetch(
+					'/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId) + '&select=id,name,join_date',
+					{ method: 'GET' }
+				);
+				const p = Array.isArray(rows) && rows.length ? rows[0] : null;
+				if (p) p.career_timeline = [];
+				return p;
+			}
+			throw err;
+		}
+	}
+
+	async function fetchSubjectProfile() {
+		return await fetchProfileById(getLeaveSubjectUserId());
+	}
+
+	let careerManageProfileId = null;
+	let careerManageProfileName = '';
+
+	function getCareerManageUserId() {
+		return careerManageProfileId || getLeaveSubjectUserId();
+	}
+
+	function getCareerManageDisplayName() {
+		if (careerManageProfileName) return careerManageProfileName;
+		return getLeaveSubjectDisplayName();
+	}
+
+	function getCareerManageJoinDate() {
+		if (careerManageProfileId && isAdmin()) {
+			const sel = document.getElementById('leaveManageUserSelect');
+			const opt = sel && sel.querySelector('option[value="' + CSS.escape(careerManageProfileId) + '"]');
+			const jd = opt && opt.getAttribute('data-join-date');
+			const d = jd && parseYmdLocal(String(jd).slice(0, 10));
+			if (d) return d;
+		}
+		return getLeaveSubjectJoinDate();
+	}
+
+	async function fetchCareerManageProfile() {
+		return await fetchProfileById(getCareerManageUserId());
+	}
+
+	async function selectLeaveSubjectUser(profileId) {
+		if (!isAdmin() || !profileId) return;
+		const sel = document.getElementById('leaveManageUserSelect');
+		if (!sel) return;
+		if (!sel.querySelector('option[value="' + CSS.escape(profileId) + '"]')) {
+			await populateLeaveManageUserSelect();
+		}
+		if (sel.querySelector('option[value="' + CSS.escape(profileId) + '"]')) {
+			sel.value = profileId;
+			onLeaveManageUserChange();
+		}
+	}
+
+	async function refreshCareerSidebar() {
+		const nameEl = document.getElementById('sidebarProfileName');
+		const banner = document.getElementById('sidebarViewingBanner');
+		const subjectId = getLeaveSubjectUserId();
+		const signedInId = getUserId();
+		if (!subjectId || !signedInId) {
+			if (nameEl) nameEl.textContent = '—';
+			renderCareerTimelineList([]);
+			if (banner) banner.style.display = 'none';
+			return;
+		}
+		try {
+			const profile = await fetchSubjectProfile();
+			const displayName = (profile && profile.name) || getLeaveSubjectDisplayName();
+			if (nameEl) nameEl.textContent = displayName;
+			renderCareerTimelineList(profile ? profile.career_timeline : []);
+			subjectCareerTimelineCache = profile ? profile.career_timeline : null;
+			if (banner) {
+				if (isAdmin() && subjectId !== signedInId) {
+					banner.style.display = 'block';
+					banner.innerHTML = 'Admin view<strong>' + escHtml(displayName) + '</strong>Leave and career for this person. Use <strong>Manage users</strong> in the top bar for full admin actions.';
+				} else {
+					banner.style.display = 'none';
+					banner.textContent = '';
+				}
+			}
+			const careerLink = document.getElementById('sidebarCareerEditLink');
+			if (careerLink) {
+				careerLink.style.display = (isAdmin() && subjectId !== signedInId) ? 'block' : 'none';
+			}
+		} catch (err) {
+			renderCareerTimelineList([]);
+			subjectCareerTimelineCache = null;
+			if (nameEl) nameEl.textContent = getLeaveSubjectDisplayName();
+			showToast('Could not load career timeline: ' + err.message, true);
+		}
+	}
+
+	let careerEditDraft = [];
+
+	function normalizeCareerDraft(items) {
+		const list = parseCareerTimeline(items);
+		let seenCurrent = false;
+		for (let i = list.length - 1; i >= 0; i--) {
+			if (!list[i].to) {
+				if (seenCurrent) list[i].to = list[i].from;
+				else seenCurrent = true;
+			}
+		}
+		return list;
+	}
+
+	function renderCareerEditList() {
+		const box = document.getElementById('careerEditList');
+		if (!box) return;
+		if (!careerEditDraft.length) {
+			box.innerHTML = '<p class="sub">No roles yet. Click “Add role” to start.</p>';
+			return;
+		}
+		box.innerHTML = careerEditDraft.map((item, idx) => {
+			const isPresent = !item.to;
+			return '<div class="career-edit-row" data-idx="' + idx + '">' +
+				'<div class="form-row"><label>Role / designation</label>' +
+				'<input type="text" class="career-title-inp" value="' + escHtml(item.title) + '" maxlength="120" placeholder="e.g. Associate Software Engineer"></div>' +
+				'<div class="form-row"><label>From</label>' +
+				'<input type="date" class="career-from-inp" value="' + escHtml(item.from || '') + '"></div>' +
+				'<div class="form-row"><label>To</label>' +
+				'<input type="date" class="career-to-inp" value="' + escHtml(item.to || '') + '"' + (isPresent ? ' disabled' : '') + '></div>' +
+				'<label class="career-present-row"><input type="checkbox" class="career-present-inp"' + (isPresent ? ' checked' : '') + '> Current role (Present)</label>' +
+				'<p style="margin:0.35rem 0 0;"><button type="button" class="btn-danger career-remove-btn" data-idx="' + idx + '">Remove</button></p>' +
+				'</div>';
+		}).join('');
+		box.querySelectorAll('.career-present-inp').forEach(cb => {
+			cb.onchange = function() {
+				const row = cb.closest('.career-edit-row');
+				const toInp = row.querySelector('.career-to-inp');
+				if (cb.checked) {
+					toInp.value = '';
+					toInp.disabled = true;
+				} else {
+					toInp.disabled = false;
+				}
+			};
+		});
+		box.querySelectorAll('.career-remove-btn').forEach(btn => {
+			btn.onclick = () => {
+				const i = parseInt(btn.getAttribute('data-idx'), 10);
+				careerEditDraft.splice(i, 1);
+				renderCareerEditList();
+			};
+		});
+	}
+
+	function collectCareerDraftFromDom() {
+		const box = document.getElementById('careerEditList');
+		if (!box) return [];
+		const rows = box.querySelectorAll('.career-edit-row');
+		const out = [];
+		rows.forEach(row => {
+			const title = row.querySelector('.career-title-inp').value.trim();
+			const from = row.querySelector('.career-from-inp').value.trim();
+			const present = row.querySelector('.career-present-inp').checked;
+			const to = present ? null : row.querySelector('.career-to-inp').value.trim();
+			if (!title || from.length < 10) return;
+			out.push({ title: title, from: from.slice(0, 10), to: to && to.length >= 10 ? to.slice(0, 10) : null });
+		});
+		return normalizeCareerDraft(out);
+	}
+
+	function openManageCareerModal(open, profileId, displayName) {
+		if (open && !isAdmin()) {
+			showToast('Only an administrator can manage career timelines.', true);
+			return;
+		}
+		const m = document.getElementById('manageCareerModal');
+		if (!m) return;
+		m.classList.toggle('open', !!open);
+		m.setAttribute('aria-hidden', open ? 'false' : 'true');
+		if (open) {
+			careerManageProfileId = profileId ? String(profileId).trim() : null;
+			careerManageProfileName = displayName ? String(displayName).trim() : '';
+			if (careerManageProfileId) {
+				selectLeaveSubjectUser(careerManageProfileId);
+			}
+			document.getElementById('manageCareerForName').textContent = getCareerManageDisplayName();
+			fetchCareerManageProfile().then(profile => {
+				if (profile && profile.name && !careerManageProfileName) {
+					careerManageProfileName = profile.name;
+					document.getElementById('manageCareerForName').textContent = profile.name;
+				}
+				careerEditDraft = parseCareerTimeline(profile ? profile.career_timeline : []);
+				renderCareerEditList();
+			}).catch(err => {
+				showToast('Could not load career data: ' + err.message, true);
+				careerEditDraft = [];
+				renderCareerEditList();
+			});
+		} else {
+			careerManageProfileId = null;
+			careerManageProfileName = '';
+			careerEditDraft = [];
+		}
+	}
+
+	function addCareerEditRow() {
+		const joinIso = fmtIsoLocal(getCareerManageJoinDate());
+		careerEditDraft.push({ title: '', from: joinIso, to: null });
+		renderCareerEditList();
+	}
+
+	async function saveCareerTimeline() {
+		if (!isAdmin()) {
+			showToast('Only an administrator can save career timelines.', true);
+			return;
+		}
+		const subjectId = getCareerManageUserId();
+		if (!subjectId) return;
+		const timeline = collectCareerDraftFromDom();
+		for (const item of timeline) {
+			if (item.to && item.to < item.from) {
+				showToast('Role “' + item.title + '”: end date must be on or after start date.', true);
+				return;
+			}
+		}
+		try {
+			await patchProfileById(subjectId, { career_timeline: timeline });
+			careerEditDraft = timeline;
+			openManageCareerModal(false);
+			await refreshCareerSidebar();
+			renderEntitlementTable();
+			initRangeInputs();
+			await refreshTable();
+			showToast('Career timeline saved for ' + getCareerManageDisplayName() + ' ✓');
+		} catch (err) {
+			const msg = String(err.message || '');
+			if (/career_timeline|column|42703/i.test(msg)) {
+				showToast('Add career_timeline column in Supabase first (see comment in page source).', true);
+			} else {
+				showToast('Could not save career timeline: ' + msg, true);
+			}
+		}
 	}
 
 	function applyProfileSession(profile) {
@@ -619,11 +986,20 @@ Admin user list selects pin — restrict API keys / RLS in production.
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(p.role || 'user') + '</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;font-weight:600;">' + pinCell + '</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;">' +
+					'<button type="button" class="btn-edit admin-manage-career-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Career</button> ' +
 					'<button type="button" class="btn-edit admin-reset-pin-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Reset PIN</button> ' +
 					'<button type="button" class="btn-danger admin-remove-user-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '"' +
 					(p.id === getUserId() ? ' disabled title="Switch user first"' : '') + '>Remove</button>' +
 					'</td></tr>';
 			}).join('');
+			tbody.querySelectorAll('.admin-manage-career-btn').forEach(btn => {
+				btn.onclick = () => {
+					const id = btn.getAttribute('data-id');
+					const name = btn.getAttribute('data-name');
+					openAdminUsersModal(false);
+					openManageCareerModal(true, id, name);
+				};
+			});
 			tbody.querySelectorAll('.admin-reset-pin-btn').forEach(btn => {
 				btn.onclick = () => openAdminResetPinModal(true, btn.getAttribute('data-id'), btn.getAttribute('data-name'));
 			});
@@ -816,6 +1192,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			};
 		}
 		await populateLeaveManageUserSelect();
+		await refreshCareerSidebar();
 		const j = getLeaveSubjectJoinDate();
 		joinInp.value = j.getFullYear() + '-' + String(j.getMonth()+1).padStart(2,'0') + '-' + String(j.getDate()).padStart(2,'0');
 		renderEntitlementTable();
@@ -823,7 +1200,6 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		updateLeaveEntriesHeading();
 		refreshTable();
 	}
-	/** Parse YYYY-MM-DD as local calendar date (avoids UTC shifts from `new Date(iso)`). */
 	function parseYmdLocal(iso) {
 		const p = String(iso || '').slice(0, 10).split('-');
 		if (p.length !== 3) return null;
@@ -904,10 +1280,12 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		const jd = opt && opt.getAttribute('data-join-date');
 		if (joinInp && jd && jd.length >= 10) joinInp.value = jd.slice(0, 10);
 		if (sel && sel.value === getUserId()) setJoinDate(joinInp.value);
-		renderEntitlementTable();
-		initRangeInputs();
-		updateLeaveEntriesHeading();
-		refreshTable();
+		refreshCareerSidebar().then(() => {
+			renderEntitlementTable();
+			initRangeInputs();
+			updateLeaveEntriesHeading();
+			refreshTable();
+		});
 	}
 
 	function ensurePeriodCoversDate(isoDate) {
@@ -920,15 +1298,104 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	}
 
 	// ── Period helpers ─────────────────────────────────────────────
-	function getPeriodStart(year) {
-		const j = getLeaveSubjectJoinDate();
-		return new Date(parseInt(year, 10), j.getMonth(), j.getDate());
+	/** Cached career timeline for the leave subject — drives leave-year windows when set. */
+	let subjectCareerTimelineCache = null;
+
+	function addYearsToDate(d, years) {
+		return new Date(d.getFullYear() + years, d.getMonth(), d.getDate());
 	}
-	/** Inclusive end = same calendar month/day one year after period start (e.g. join 28 May 2025 → period for year 2026 is 28 May 2026 – 28 May 2027). */
-	function getPeriodEnd(year) {
+
+	/**
+	 * Build leave-year windows from career roles (oldest first):
+	 * - Completed role (has end date): one leave year = that role's from–to span.
+	 * - Current role (Present): rolling 12-month windows from the role start date.
+	 * Example: Intern 2025-03-03–2025-12-03 = year 1; Associate from 2025-12-03 = year 2 is 2025-12-03–2026-12-03.
+	 */
+	function buildLeaveYearPeriodsFromCareer(careerRaw) {
+		const roles = parseCareerTimeline(careerRaw);
+		if (!roles.length) return null;
+		const periods = [];
+		const today = new Date();
+		today.setHours(0, 0, 0, 0);
+		for (let i = 0; i < roles.length; i++) {
+			const role = roles[i];
+			const roleStart = parseYmdLocal(role.from);
+			if (!roleStart) continue;
+			if (role.to) {
+				const roleEnd = parseYmdLocal(role.to);
+				if (roleEnd && roleEnd >= roleStart) {
+					periods.push({
+						leaveYearNum: periods.length + 1,
+						from: role.from,
+						to: role.to
+					});
+				}
+			} else {
+				let windowStart = roleStart;
+				for (let n = 0; n < 55; n++) {
+					const windowEnd = addYearsToDate(windowStart, 1);
+					periods.push({
+						leaveYearNum: periods.length + 1,
+						from: fmtIsoLocal(windowStart),
+						to: fmtIsoLocal(windowEnd)
+					});
+					if (windowEnd >= today) break;
+					windowStart = windowEnd;
+				}
+			}
+		}
+		return periods.length ? periods : null;
+	}
+
+	function buildLeaveYearPeriodsFromJoinDate() {
 		const j = getLeaveSubjectJoinDate();
-		const y = parseInt(year, 10);
-		return new Date(y + 1, j.getMonth(), j.getDate());
+		const periods = [];
+		for (let n = 0; n < 55; n++) {
+			const ps = n === 0 ? j : addYearsToDate(j, n);
+			const pe = addYearsToDate(j, n + 1);
+			periods.push({
+				leaveYearNum: n + 1,
+				from: fmtIsoLocal(ps),
+				to: fmtIsoLocal(pe)
+			});
+		}
+		return periods;
+	}
+
+	function getLeaveYearPeriods() {
+		const fromCareer = buildLeaveYearPeriodsFromCareer(subjectCareerTimelineCache);
+		return fromCareer || buildLeaveYearPeriodsFromJoinDate();
+	}
+
+	function findLeavePeriodForDate(dateStr) {
+		const d = String(dateStr || '').slice(0, 10);
+		if (d.length < 10) return null;
+		const periods = getLeaveYearPeriods();
+		const matches = periods.filter(p => d >= p.from && d <= p.to);
+		if (!matches.length) return null;
+		if (matches.length === 1) return matches[0];
+		return matches[matches.length - 1];
+	}
+
+	function getLeaveYearNumForDate(dateStr) {
+		const p = findLeavePeriodForDate(dateStr);
+		return p ? p.leaveYearNum : null;
+	}
+
+	function getPeriodStart(leaveYearNum) {
+		const n = parseInt(leaveYearNum, 10);
+		const p = getLeaveYearPeriods().find(x => x.leaveYearNum === n);
+		if (p) return parseYmdLocal(p.from);
+		const j = getLeaveSubjectJoinDate();
+		return new Date(n, j.getMonth(), j.getDate());
+	}
+
+	function getPeriodEnd(leaveYearNum) {
+		const n = parseInt(leaveYearNum, 10);
+		const p = getLeaveYearPeriods().find(x => x.leaveYearNum === n);
+		if (p) return parseYmdLocal(p.to);
+		const j = getLeaveSubjectJoinDate();
+		return new Date(n + 1, j.getMonth(), j.getDate());
 	}
 	function fmt(d) {
 		return d.getFullYear() + ' ' + MONTHS[d.getMonth()] + ' ' + String(d.getDate()).padStart(2,'0');
@@ -939,34 +1406,15 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	function fmtIsoLocal(d) {
 		return d.getFullYear() + '-' + String(d.getMonth()+1).padStart(2,'0') + '-' + String(d.getDate()).padStart(2,'0');
 	}
-	function getPeriodLabel(year) {
-		return fmt(getPeriodStart(year)) + ' – ' + fmt(getPeriodEnd(year));
+	function getPeriodLabel(leaveYearNum) {
+		return fmt(getPeriodStart(leaveYearNum)) + ' – ' + fmt(getPeriodEnd(leaveYearNum));
 	}
-	function getPeriodRangeYmd(year) {
-		return fmtYmd(getPeriodStart(year)) + ' - ' + fmtYmd(getPeriodEnd(year));
+	function getPeriodRangeYmd(leaveYearNum) {
+		return fmtYmd(getPeriodStart(leaveYearNum)) + ' - ' + fmtYmd(getPeriodEnd(leaveYearNum));
 	}
-	/**
-	 * Calendar year Y of the leave-year window [anniversary Y, anniversary Y+1) conceptually;
-	 * stored ranges use inclusive endpoints, so on an anniversary date two windows overlap.
-	 * We always assign that day to the **new** leave-year (higher Y) — the period that starts
-	 * on that date — so year 3 begins on the 2nd anniversary, entitlements and badges match policy.
-	 */
+	/** Returns leave-year number (1, 2, 3…) for a date, or null if before the first period. */
 	function getPeriodYear(dateStr) {
-		const d = parseYmdLocal(dateStr);
-		if (!d) return null;
-		const j = getLeaveSubjectJoinDate();
-		const jm = j.getMonth(), jd = j.getDate(), jy = j.getFullYear();
-		const jn = new Date(jy, jm, jd);
-		if (d < jn) return null;
-		const matches = [];
-		for (let Y = jy; Y < jy + 55; Y++) {
-			const ps = new Date(Y, jm, jd);
-			const pe = new Date(Y + 1, jm, jd);
-			if (d >= ps && d <= pe) matches.push(Y);
-		}
-		if (!matches.length) return null;
-		if (matches.length === 1) return matches[0];
-		return matches[matches.length - 1];
+		return getLeaveYearNumForDate(dateStr);
 	}
 
 	function ordinalLeaveYear(n) {
@@ -990,36 +1438,34 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			el.textContent = '';
 			return;
 		}
-		const py = getPeriodYear(fromDate);
+		const py = getLeaveYearNumForDate(fromDate);
 		if (py == null) {
-			el.textContent = '(before join date)';
+			el.textContent = '(before first leave year)';
 			return;
 		}
-		const jy = getLeaveSubjectJoinDate().getFullYear();
-		const n = py - jy + 1;
-		el.textContent = '(' + ordinalLeaveYear(n) + ' year)';
+		el.textContent = '(' + ordinalLeaveYear(py) + ' year)';
 	}
 
 	// ── Entitlement ────────────────────────────────────────────────
 	/**
 	 * Policy (aligned with section 2 on this page):
-	 * - "Leave year" = rolling 12 months from join date (anniversary), not Jan–Dec.
+	 * - Leave years follow career role periods when a career timeline exists.
+	 * - Otherwise, rolling 12 months from join date.
 	 * - 1st and 2nd leave-years: no annual entitlement; casual cap 6 days each year.
 	 * - From the 3rd leave-year onward: annual 10 days, casual 7 days.
-	 *
-	 * `periodStartYear` is Y from getPeriodYear(...) — the calendar year of the anniversary
-	 * that starts that leave-year window. Example: join 2024-05-14 → Y=2026 starts the 3rd
-	 * leave-year; balances use annual 10 and casual 7 for dates in that window.
 	 */
-	function getLeaveYearNumber(periodStartYear) {
-		const y = parseInt(periodStartYear, 10);
-		const jy = getLeaveSubjectJoinDate().getFullYear();
-		return y - jy + 1;
+	function getLeaveYearNumber(leaveYearNum) {
+		return parseInt(leaveYearNum, 10);
 	}
-	function getEntitlement(periodStartYear) {
-		const leaveYearNum = getLeaveYearNumber(periodStartYear);
-		if (leaveYearNum <= 2) return { annual: 0, casualDays: 6 };
+	function getEntitlement(leaveYearNum) {
+		const n = getLeaveYearNumber(leaveYearNum);
+		if (Number.isNaN(n) || n <= 2) return { annual: 0, casualDays: 6 };
 		return { annual: 10, casualDays: 7 };
+	}
+	function getEntitlementForDate(dateStr) {
+		const n = getLeaveYearNumForDate(dateStr);
+		if (n == null) return { annual: 0, casualDays: 6 };
+		return getEntitlement(n);
 	}
 
 	/** Format leave amounts in days (shows one decimal when needed, e.g. 5.5). */
@@ -1038,12 +1484,20 @@ Admin user list selects pin — restrict API keys / RLS in production.
 
 	function renderEntitlementTable() {
 		const j = getLeaveSubjectJoinDate();
-		const jy = j.getFullYear();
 		document.getElementById('summaryJoinDate').textContent = fmt(j);
-		document.getElementById('entitlementTableBody').innerHTML =
-			'<tr><td>' + getPeriodLabel(jy) + '</td><td>No annual. Casual: 6 days.</td></tr>' +
-			'<tr><td>' + getPeriodLabel(jy+1) + '</td><td>No annual. Casual: 6 days.</td></tr>' +
-			'<tr><td>' + fmt(getPeriodStart(jy+2)) + ' onward</td><td>Annual 10 days, Casual 7 days.</td></tr>';
+		const periods = getLeaveYearPeriods();
+		const rows = periods.slice(0, 6).map(p => {
+			const ent = getEntitlement(p.leaveYearNum);
+			const entText = ent.annual === 0
+				? 'No annual. Casual: ' + ent.casualDays + ' days.'
+				: 'Annual ' + ent.annual + ' days, Casual ' + ent.casualDays + ' days.';
+			return '<tr><td>' + escHtml(fmt(parseYmdLocal(p.from)) + ' – ' + fmt(parseYmdLocal(p.to))) +
+				' <span class="sub">(' + ordinalLeaveYear(p.leaveYearNum) + ' year)</span></td><td>' + entText + '</td></tr>';
+		}).join('');
+		const more = periods.length > 6
+			? '<tr><td colspan="2" class="sub">Further leave years continue from each role start date (Present) or join date if no career timeline.</td></tr>'
+			: '';
+		document.getElementById('entitlementTableBody').innerHTML = rows + more;
 	}
 
 	// ── Supabase API ───────────────────────────────────────────────
@@ -1064,16 +1518,10 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		return data;
 	}
 
-	async function fetchEntries(year) {
-		const userId = getLeaveSubjectUserId();
-		if (!userId) return [];
-		const ps = fmtIsoLocal(getPeriodStart(year));
-		const pe = fmtIsoLocal(getPeriodEnd(year));
-		return await sbFetch(
-			'/rest/v1/leave_entries?user_id=eq.' + encodeURIComponent(userId) +
-			'&date=gte.' + ps + '&date=lte.' + pe + '&order=date.desc',
-			{ method: 'GET' }
-		);
+	async function fetchEntriesForDate(leaveDate) {
+		const period = findLeavePeriodForDate(leaveDate);
+		if (!period) return [];
+		return await fetchEntriesByRange(period.from, period.to);
 	}
 	async function fetchEntriesByRange(fromDate, toDate) {
 		const userId = getLeaveSubjectUserId();
@@ -1102,8 +1550,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 
 	// ── Render balance ─────────────────────────────────────────────
 	function renderBalance(fromDate, toDate, entries) {
-		const entYear = getPeriodYear(fromDate);
-		const ent = getEntitlement(entYear == null ? new Date(fromDate).getFullYear() : entYear);
+		const ent = getEntitlementForDate(fromDate);
 		let annualUsed = 0, casualUsedDays = 0;
 		(entries || []).forEach(e => {
 			if (e.full_or_half === 'covered') return;
@@ -1237,14 +1684,13 @@ Admin user list selects pin — restrict API keys / RLS in production.
 	/** Default From/To = the leave-year window that contains today's date (local). If today is before join, use join year's window. */
 	function initRangeInputs() {
 		const todayIso = fmtIsoLocal(new Date());
-		let periodYear = getPeriodYear(todayIso);
-		if (periodYear == null) {
-			periodYear = getLeaveSubjectJoinDate().getFullYear();
-		}
+		const period = findLeavePeriodForDate(todayIso) || getLeaveYearPeriods()[0];
 		const fromInp = document.getElementById('periodFromInput');
 		const toInp = document.getElementById('periodToInput');
-		fromInp.value = fmtIsoLocal(getPeriodStart(periodYear));
-		toInp.value = fmtIsoLocal(getPeriodEnd(periodYear));
+		if (period) {
+			fromInp.value = period.from;
+			toInp.value = period.to;
+		}
 		fromInp.onchange = refreshTable;
 		toInp.onchange = refreshTable;
 		updatePeriodLeaveYearLabel();
@@ -1270,17 +1716,17 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		const addBtn = document.getElementById('addBtn');
 		const isEdit = !!editingEntryId;
 
-		const year = getPeriodYear(leaveDate);
-		if (year == null) {
-			showToast('Leave date must be on or after this person\'s joining date (' + fmt(getLeaveSubjectJoinDate()) + ').', true);
+		const leaveYearNum = getLeaveYearNumForDate(leaveDate);
+		if (leaveYearNum == null) {
+			showToast('Leave date must fall within a leave year (on or after joining / first career role).', true);
 			return;
 		}
 
 		// Check balance (when editing, exclude this row from usage totals)
-		const ent = getEntitlement(year);
+		const ent = getEntitlement(leaveYearNum);
 		let usedAnnual = 0, usedCasualDays = 0;
 		try {
-			const existing = await fetchEntries(year);
+			const existing = await fetchEntriesForDate(leaveDate);
 			const excl = isEdit ? editingEntryId : null;
 			const sums = sumUsageFromEntries(existing, excl);
 			usedAnnual = sums.annualUsed;
@@ -1372,6 +1818,7 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		document.getElementById('adminUsersBtn').onclick = () => openAdminUsersModal(true);
 		document.getElementById('adminUsersCloseBtn').onclick = () => openAdminUsersModal(false);
 		document.getElementById('adminUsersRefreshBtn').onclick = () => refreshAdminUsersList();
+		document.getElementById('adminAddUserBtn').onclick = () => openAddUserModal(true);
 		document.getElementById('adminUsersModal').addEventListener('click', function(ev) {
 			if (ev.target === this) openAdminUsersModal(false);
 		});
@@ -1381,7 +1828,6 @@ Admin user list selects pin — restrict API keys / RLS in production.
 			if (ev.target === this) openAdminResetPinModal(false);
 		});
 
-		document.getElementById('adminAddUserBtn').onclick = () => openAddUserModal(true);
 		document.getElementById('logoutBtn').onclick = () => {
 			clearSession();
 			document.getElementById('gatePinInput').focus();
@@ -1394,6 +1840,14 @@ Admin user list selects pin — restrict API keys / RLS in production.
 		});
 
 		document.getElementById('leaveManageUserSelect').addEventListener('change', onLeaveManageUserChange);
+
+		document.getElementById('sidebarManageCareerBtn').onclick = () => openManageCareerModal(true);
+		document.getElementById('careerAddRowBtn').onclick = addCareerEditRow;
+		document.getElementById('careerSaveBtn').onclick = saveCareerTimeline;
+		document.getElementById('careerCancelBtn').onclick = () => openManageCareerModal(false);
+		document.getElementById('manageCareerModal').addEventListener('click', function(ev) {
+			if (ev.target === this) openManageCareerModal(false);
+		});
 
 		document.getElementById('gatePinInput').focus();
 	})();
