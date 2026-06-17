@@ -24,7 +24,7 @@
 		.career-timeline li.current::before { background: #0a5f0a; box-shadow: 0 0 0 2px #c8e6c9; }
 		.career-timeline .role-title { font-weight: 600; color: var(--text); font-size: 0.92rem; line-height: 1.35; }
 		.career-timeline .role-dates { font-size: 0.82rem; color: #666; margin-top: 0.12rem; }
-		.career-timeline-empty { font-size: 0.88rem; color: #777; margin: 0; line-height: 1.4; }
+		.career-timeline-empty { font-size: 0.88rem; color: #777; margin: 0; line-height: 1.4; list-style: none; padding: 0 0 0 0.2rem; }
 		.sidebar-actions { display: flex; flex-direction: column; gap: 0.45rem; margin-top: 1rem; }
 		.sidebar-actions .btn-ghost { margin-left: 0; width: 100%; text-align: center; font-size: 0.82rem; cursor: pointer; }
 		.career-edit-row { display: grid; grid-template-columns: 1fr; gap: 0.5rem; padding: 0.75rem; border: 1px solid var(--border); border-radius: 6px; margin-bottom: 0.65rem; background: #fafbfc; }
@@ -41,14 +41,13 @@
 		table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.95rem; }
 		th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
 		th { background: var(--primary-light); color: var(--primary); font-weight: 600; }
-		.my-summary { background: linear-gradient(135deg, #003366 0%, #004080 100%); color: white; padding: 1.25rem; border-radius: 8px; margin-bottom: 1.5rem; }
-		.my-summary h2 { margin: 0 0 0.75rem 0; font-size: 1.25rem; }
-		.my-summary table { color: white; }
-		.my-summary th { background: rgba(255,255,255,0.15); }
-		.my-summary td { border-color: rgba(255,255,255,0.2); }
 		.sub { font-size: 0.9rem; color: #555; }
-		.period-filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: 0.35rem 0.75rem; }
-		.period-year-badge { font-weight: 600; color: var(--primary); font-size: 0.95rem; margin: 0; }
+		.period-filter-row { margin: 0 0 0.75rem 0; }
+		.period-filter-row .period-year-field label { display: block; font-weight: 600; margin-bottom: 0.25rem; color: var(--primary); font-size: 0.9rem; }
+		.period-filter-row .period-year-field select { padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; min-width: 280px; max-width: 100%; font-size: 0.95rem; }
+		.period-filter-row .period-year-field select option.show-more-option { font-style: italic; color: #555; }
+		.my-leave-summary-head { display: flex; align-items: center; justify-content: space-between; gap: 0.75rem; flex-wrap: wrap; }
+		.my-leave-summary-head .btn { flex-shrink: 0; }
 		.form-row { margin-bottom: 0.75rem; }
 		.form-row label { display: block; font-weight: 600; margin-bottom: 0.25rem; color: var(--primary); }
 		.form-row input, .form-row select { padding: 0.5rem; border: 1px solid var(--border); border-radius: 4px; width: 100%; max-width: 280px; }
@@ -233,6 +232,88 @@
 	</div>
 </div>
 
+<div id="manageLeaveYearsModal" class="modal-overlay" aria-hidden="true">
+	<div class="modal-card modal-wide">
+		<h3>Leave years — <span id="manageLeaveYearsForName">—</span></h3>
+		<p class="sub" style="margin-top:-0.5rem;">All leave year periods for this employee. Edit, delete, or add a new year below.</p>
+		<div style="overflow-x:auto;margin-bottom:1rem;">
+			<table style="width:100%;border-collapse:collapse;font-size:0.875rem;">
+				<thead>
+					<tr style="background:var(--primary-light);">
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Year</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">From</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">To</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Annual</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Casual</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Actions</th>
+					</tr>
+				</thead>
+				<tbody id="leaveYearsTableBody"></tbody>
+			</table>
+		</div>
+		<hr style="margin:0 0 1rem 0;border:none;border-top:1px solid var(--border);">
+		<h4 id="leaveEntFormTitle" style="margin:0 0 0.75rem 0;color:var(--primary);font-size:1rem;">Add new year</h4>
+		<input type="hidden" id="leaveEntEditFromKey" value="">
+		<div class="form-row">
+			<label for="leaveEntFrom">From</label>
+			<input type="date" id="leaveEntFrom" required>
+		</div>
+		<div class="form-row">
+			<label for="leaveEntTo">To</label>
+			<input type="date" id="leaveEntTo" required>
+		</div>
+		<div class="form-row">
+			<label for="leaveEntAnnual">Annual leave (days)</label>
+			<input type="number" id="leaveEntAnnual" min="0" step="0.5" value="0">
+		</div>
+		<div class="form-row">
+			<label for="leaveEntCasual">Casual leave (days)</label>
+			<input type="number" id="leaveEntCasual" min="0" step="0.5" value="6">
+		</div>
+		<div class="modal-actions">
+			<button type="button" class="btn btn-primary" id="leaveEntSaveBtn">Save year</button>
+			<button type="button" class="btn btn-ghost" id="leaveEntCancelEditBtn" style="display:none;">Cancel edit</button>
+			<button type="button" class="btn btn-ghost" id="leaveEntCloseBtn">Close</button>
+		</div>
+	</div>
+</div>
+
+<div id="addLeaveModal" class="modal-overlay" aria-hidden="true">
+	<div class="modal-card">
+		<h3 id="addLeaveModalTitle">Add leave</h3>
+		<form id="leaveForm">
+			<div class="form-row">
+				<label for="leaveType">Leave type</label>
+				<select id="leaveType" required>
+					<option value="annual">Annual Leave</option>
+					<option value="casual" selected>Casual Leave</option>
+				</select>
+			</div>
+			<div class="form-row">
+				<label for="leaveDate">Leave date</label>
+				<input type="date" id="leaveDate" required>
+			</div>
+			<div class="form-row">
+				<label>Full / Half / Covered</label>
+				<select id="fullOrHalf" required>
+					<option value="full">Full day</option>
+					<option value="half">Half day</option>
+					<option value="covered">Covered</option>
+				</select>
+			</div>
+			<div class="form-row">
+				<label for="notes">Reason for leave</label>
+				<textarea id="notes" rows="2" placeholder="e.g. Medical appointment, family matter, personal work" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.95rem;resize:vertical;"></textarea>
+			</div>
+			<div class="modal-actions">
+				<button type="submit" class="btn btn-primary" id="addBtn">Add leave</button>
+				<button type="button" class="btn btn-ghost" id="cancelEditBtn">Cancel</button>
+			</div>
+			<div id="statusMsg"></div>
+		</form>
+	</div>
+</div>
+
 <div id="mainApp">
 <div class="user-bar">
 	<div class="inner">
@@ -242,6 +323,7 @@
 		<span class="sub">Leave records are saved under your profile.</span>
 		<span style="flex:1;min-width:0.5rem;"></span>
 		<button type="button" class="btn-ghost" id="editProfileBtn">Reset Profile</button>
+		<button type="button" class="btn-ghost" id="manageLeaveYearsBtn" style="display:none;">Leave years</button>
 		<button type="button" class="btn-ghost" id="adminUsersBtn" style="display:none;">Manage users</button>
 		<button type="button" class="btn-ghost" id="logoutBtn">Switch user</button>
 	</div>
@@ -277,13 +359,10 @@
 		<div class="card-head">Leave summary — <span id="periodRange">—</span></div>
 		<div class="card-body">
 			<p class="sub period-filter-row">
-				<span style="display:inline-flex;flex-wrap:wrap;align-items:center;gap:0.35rem 0.75rem;">
-					<label for="periodFromInput">From:</label>
-					<input type="date" id="periodFromInput">
-					<label for="periodToInput">To:</label>
-					<input type="date" id="periodToInput">
+				<span class="period-year-field">
+					<label for="periodLeaveYearSelect">Leave year</label>
+					<select id="periodLeaveYearSelect"></select>
 				</span>
-				<span id="periodLeaveYearBadge" class="period-year-badge" aria-live="polite"></span>
 			</p>
 			<div class="balance-grid">
 				<div class="balance-box">
@@ -307,65 +386,26 @@
 	</section>
 
 	<section class="card">
-		<div class="card-head">Add Leave</div>
+		<div class="card-head my-leave-summary-head">
+			<span id="leaveEntriesHeading">My leave summary</span>
+			<button type="button" class="btn btn-primary" id="openAddLeaveBtn">Add leave</button>
+		</div>
 		<div class="card-body">
 			<div id="leaveManageUserRow" class="form-row" style="display:none;">
 				<label for="leaveManageUserSelect">Leave records for</label>
 				<select id="leaveManageUserSelect"></select>
 			</div>
 			<p id="leaveManageUserHint" class="sub" style="display:none;margin:-0.35rem 0 0.75rem 0;">As admin, choose whose leave you are viewing or adding. Join date and balances apply to this person.</p>
-			<form id="leaveForm">
-				<div class="form-row">
-					<label for="leaveType">Leave type</label>
-					<select id="leaveType" required>
-						<option value="annual">Annual Leave</option>
-						<option value="casual" selected>Casual Leave</option>
-					</select>
-				</div>
-				<div class="form-row">
-					<label for="leaveDate">Leave date</label>
-					<input type="date" id="leaveDate" required>
-				</div>
-				<div class="form-row">
-					<label>Full / Half / Covered</label>
-					<select id="fullOrHalf" required>
-						<option value="full">Full day</option>
-						<option value="half">Half day</option>
-						<option value="covered">Covered</option>
-					</select>
-				</div>
-				<div class="form-row">
-					<label for="notes">Notes (optional)</label>
-					<input type="text" id="notes" placeholder="e.g. Personal">
-				</div>
-				<div class="form-row">
-					<button type="submit" class="btn btn-primary" id="addBtn">Add leave</button>
-					<button type="button" class="btn-ghost" id="cancelEditBtn" style="display:none;">Cancel edit</button>
-				</div>
-				<div id="statusMsg"></div>
-			</form>
-
-			<hr style="margin:1.25rem 0;border:none;border-top:1px solid var(--border);">
-
-			<p><strong id="leaveEntriesHeading">My leave entries</strong> <span class="sub" id="loadingMsg"></span></p>
+			<p class="sub" style="margin-top:0;"><span id="loadingMsg"></span></p>
 			<table id="leaveList">
 				<thead>
-					<tr><th>Date</th><th>Type</th><th>Full/Half</th><th>Days</th><th>Notes</th><th></th></tr>
+					<tr><th>Date</th><th>Type</th><th>Full/Half</th><th>Days</th><th>Reason</th><th></th></tr>
 				</thead>
 				<tbody id="leaveListBody">
 					<tr><td colspan="6" class="sub">Sign in with your PIN to load records.</td></tr>
 				</tbody>
 			</table>
 		</div>
-	</section>
-
-	<section class="card my-summary">
-		<h2>My Leave Summary</h2>
-		<p><strong>Joining date:</strong> <span id="summaryJoinDate">—</span></p>
-		<table>
-			<thead><tr><th>Period</th><th>Entitlement</th></tr></thead>
-			<tbody id="entitlementTableBody"></tbody>
-		</table>
 	</section>
 
 	<div class="card"><div class="card-head">1. Annual Leave</div><div class="card-body">
@@ -405,7 +445,9 @@ Admin user list selects pin — restrict API keys / RLS in production.
 
 Career timeline (run once in Supabase SQL editor):
   alter table leave_profiles add column if not exists career_timeline jsonb default '[]'::jsonb;
-Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-30"},{"title":"Associate Software Engineer","from":"2024-07-01","to":null}]
+  alter table leave_profiles add column if not exists leave_entitlements jsonb default '[]'::jsonb;
+Example career: [{"title":"Intern","from":"2025-03-03","to":"2025-12-03"},{"title":"Associate QA","from":"2025-12-03","to":null}]
+Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"casual":6},{"from":"2025-12-03","to":"2026-12-03","annual":0,"casual":6}]
 -->
 
 <script>
@@ -517,6 +559,8 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		const adm = isAdmin();
 		const usersBtn = document.getElementById('adminUsersBtn');
 		if (usersBtn) usersBtn.style.display = adm ? 'inline-block' : 'none';
+		const leaveYearsBtn = document.getElementById('manageLeaveYearsBtn');
+		if (leaveYearsBtn) leaveYearsBtn.style.display = adm ? 'inline-block' : 'none';
 		const badge = document.getElementById('adminBadge');
 		if (badge) badge.style.display = adm ? 'inline' : 'none';
 		const leaveRow = document.getElementById('leaveManageUserRow');
@@ -571,18 +615,30 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		return fmtCareerShort(from) + ' – ' + (to ? fmtCareerShort(to) : 'Present');
 	}
 
-	function renderCareerTimelineList(items) {
+	function renderCareerTimelineList(careerRaw, entitlementsRaw) {
 		const ul = document.getElementById('careerTimeline');
 		if (!ul) return;
-		const list = sortCareerForDisplay(parseCareerTimeline(items));
+		let list = parseCareerTimeline(careerRaw);
 		if (!list.length) {
-			ul.innerHTML = '<li class="career-timeline-empty">No roles recorded yet.</li>';
+			const ents = parseLeaveEntitlements(entitlementsRaw);
+			const today = fmtIsoLocal(new Date());
+			list = ents.map((e, i) => ({
+				title: ordinalLeaveYear(i + 1) + ' leave year',
+				from: e.from,
+				to: (today >= e.from && today <= e.to) ? null : e.to,
+				subtitle: 'Annual ' + fmtDayAmount(e.annual) + ' · Casual ' + fmtDayAmount(e.casual)
+			}));
+		}
+		list = sortCareerForDisplay(list);
+		if (!list.length) {
+			ul.innerHTML = '<li class="career-timeline-empty">No roles or leave years yet.</li>';
 			return;
 		}
 		ul.innerHTML = list.map((item) => {
 			const isCurrent = !item.to;
 			return '<li class="' + (isCurrent ? 'current' : '') + '">' +
 				'<div class="role-title">' + escHtml(item.title) + '</div>' +
+				(item.subtitle ? '<div class="role-dates">' + escHtml(item.subtitle) + '</div>' : '') +
 				'<div class="role-dates">' + escHtml(fmtCareerRange(item.from, item.to)) + '</div>' +
 				'</li>';
 		}).join('');
@@ -590,24 +646,32 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 
 	async function fetchProfileById(profileId) {
 		if (!profileId) return null;
+		const base = '/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId);
+		let p = null;
 		try {
-			const rows = await sbFetch(
-				'/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId) + '&select=id,name,join_date,career_timeline',
-				{ method: 'GET' }
-			);
-			return Array.isArray(rows) && rows.length ? rows[0] : null;
-		} catch (err) {
-			if (/career_timeline|column|42703|400/i.test(String(err.message || ''))) {
-				const rows = await sbFetch(
-					'/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId) + '&select=id,name,join_date',
-					{ method: 'GET' }
-				);
-				const p = Array.isArray(rows) && rows.length ? rows[0] : null;
-				if (p) p.career_timeline = [];
-				return p;
+			const rows = await sbFetch(base + '&select=id,name,join_date,career_timeline,leave_entitlements', { method: 'GET' });
+			p = Array.isArray(rows) && rows.length ? rows[0] : null;
+		} catch (e1) {
+			try {
+				const rows = await sbFetch(base + '&select=id,name,join_date,career_timeline', { method: 'GET' });
+				p = Array.isArray(rows) && rows.length ? rows[0] : null;
+				if (p && p.leave_entitlements == null) p.leave_entitlements = [];
+			} catch (e2) {
+				try {
+					const rows = await sbFetch(base + '&select=id,name,join_date,leave_entitlements', { method: 'GET' });
+					p = Array.isArray(rows) && rows.length ? rows[0] : null;
+					if (p && p.career_timeline == null) p.career_timeline = [];
+				} catch (e3) {
+					const rows = await sbFetch(base + '&select=id,name,join_date', { method: 'GET' });
+					p = Array.isArray(rows) && rows.length ? rows[0] : null;
+					if (p) {
+						p.career_timeline = [];
+						p.leave_entitlements = [];
+					}
+				}
 			}
-			throw err;
 		}
+		return p;
 	}
 
 	async function fetchSubjectProfile() {
@@ -661,7 +725,7 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		const signedInId = getUserId();
 		if (!subjectId || !signedInId) {
 			if (nameEl) nameEl.textContent = '—';
-			renderCareerTimelineList([]);
+			renderCareerTimelineList(null, null);
 			if (banner) banner.style.display = 'none';
 			return;
 		}
@@ -669,8 +733,9 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 			const profile = await fetchSubjectProfile();
 			const displayName = (profile && profile.name) || getLeaveSubjectDisplayName();
 			if (nameEl) nameEl.textContent = displayName;
-			renderCareerTimelineList(profile ? profile.career_timeline : []);
+			renderCareerTimelineList(profile ? profile.career_timeline : null, profile ? profile.leave_entitlements : null);
 			subjectCareerTimelineCache = profile ? profile.career_timeline : null;
+			subjectLeaveEntitlementsCache = profile ? profile.leave_entitlements : null;
 			if (banner) {
 				if (isAdmin() && subjectId !== signedInId) {
 					banner.style.display = 'block';
@@ -685,10 +750,11 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 				careerLink.style.display = (isAdmin() && subjectId !== signedInId) ? 'block' : 'none';
 			}
 		} catch (err) {
-			renderCareerTimelineList([]);
+			renderCareerTimelineList(null, null);
 			subjectCareerTimelineCache = null;
+			subjectLeaveEntitlementsCache = null;
 			if (nameEl) nameEl.textContent = getLeaveSubjectDisplayName();
-			showToast('Could not load career timeline: ' + err.message, true);
+			showToast('Could not load profile timeline: ' + err.message, true);
 		}
 	}
 
@@ -823,7 +889,6 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 			careerEditDraft = timeline;
 			openManageCareerModal(false);
 			await refreshCareerSidebar();
-			renderEntitlementTable();
 			initRangeInputs();
 			await refreshTable();
 			showToast('Career timeline saved for ' + getCareerManageDisplayName() + ' ✓');
@@ -835,6 +900,271 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 				showToast('Could not save career timeline: ' + msg, true);
 			}
 		}
+	}
+
+	function parseLeaveEntitlements(raw) {
+		if (raw == null || raw === '') return [];
+		let arr = raw;
+		if (typeof raw === 'string') {
+			try { arr = JSON.parse(raw); } catch { return []; }
+		}
+		if (!Array.isArray(arr)) return [];
+		return arr
+			.filter(x => x && String(x.from || '').length >= 10 && String(x.to || '').length >= 10)
+			.map(x => ({
+				from: String(x.from).slice(0, 10),
+				to: String(x.to).slice(0, 10),
+				annual: Math.max(0, Number(x.annual) || 0),
+				casual: Math.max(0, Number(x.casual != null ? x.casual : x.casualDays) || 0)
+			}))
+			.sort((a, b) => a.from.localeCompare(b.from));
+	}
+
+	let leaveEntManageProfileId = null;
+	let leaveEntManageProfileName = '';
+	let leaveEntCachedList = [];
+
+	function canEditLeaveEntitlementsFor(profileId) {
+		return !!profileId && isAdmin();
+	}
+
+	function getLeaveEntManageUserId() {
+		return leaveEntManageProfileId || getLeaveSubjectUserId();
+	}
+
+	function getLeaveEntManageDisplayName() {
+		if (leaveEntManageProfileName) return leaveEntManageProfileName;
+		return getLeaveSubjectDisplayName();
+	}
+
+	function clearLeaveYearForm(forNew) {
+		document.getElementById('leaveEntEditFromKey').value = '';
+		document.getElementById('leaveEntFormTitle').textContent = 'Add new year';
+		document.getElementById('leaveEntSaveBtn').textContent = 'Save year';
+		document.getElementById('leaveEntCancelEditBtn').style.display = 'none';
+		if (forNew) prefillLeaveYearFormForAdd(leaveEntCachedList);
+	}
+
+	function prefillLeaveYearFormForAdd(list) {
+		let fromIso;
+		let toIso;
+		if (list.length) {
+			const last = list[list.length - 1];
+			fromIso = last.to;
+			const d = parseYmdLocal(fromIso);
+			toIso = d ? fmtIsoLocal(addYearsToDate(d, 1)) : '';
+		} else {
+			const start = getLeaveSubjectJoinDate();
+			fromIso = fmtIsoLocal(start);
+			toIso = fmtIsoLocal(addYearsToDate(start, 1));
+		}
+		const def = getDefaultPolicyEntitlement(list.length + 1);
+		document.getElementById('leaveEntFrom').value = fromIso || '';
+		document.getElementById('leaveEntTo').value = toIso || '';
+		document.getElementById('leaveEntAnnual').value = def.annual;
+		document.getElementById('leaveEntCasual').value = def.casualDays;
+	}
+
+	function renderLeaveYearsTable(list) {
+		const tbody = document.getElementById('leaveYearsTableBody');
+		if (!tbody) return;
+		leaveEntCachedList = parseLeaveEntitlements(list);
+		if (!leaveEntCachedList.length) {
+			tbody.innerHTML = '<tr><td colspan="6" class="sub" style="padding:0.5rem;">No leave years yet — add the first one below.</td></tr>';
+			return;
+		}
+		tbody.innerHTML = leaveEntCachedList.map((item, idx) =>
+			'<tr>' +
+			'<td style="padding:0.45rem;border-bottom:1px solid #eee;font-weight:600;">Year ' + (idx + 1) + '</td>' +
+			'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(item.from) + '</td>' +
+			'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(item.to) + '</td>' +
+			'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(fmtDayAmount(item.annual)) + '</td>' +
+			'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(fmtDayAmount(item.casual)) + '</td>' +
+			'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;">' +
+			'<button type="button" class="btn-edit leave-year-edit-btn" data-from="' + escHtml(item.from) + '">Edit</button> ' +
+			'<button type="button" class="btn-danger leave-year-delete-btn" data-from="' + escHtml(item.from) + '">Delete</button>' +
+			'</td></tr>'
+		).join('');
+		tbody.querySelectorAll('.leave-year-edit-btn').forEach(btn => {
+			btn.onclick = () => startEditLeaveYear(btn.getAttribute('data-from'));
+		});
+		tbody.querySelectorAll('.leave-year-delete-btn').forEach(btn => {
+			btn.onclick = () => deleteLeaveYear(btn.getAttribute('data-from'));
+		});
+	}
+
+	function startEditLeaveYear(fromKey) {
+		const item = leaveEntCachedList.find(x => x.from === fromKey);
+		if (!item) return;
+		document.getElementById('leaveEntEditFromKey').value = item.from;
+		document.getElementById('leaveEntFormTitle').textContent = 'Edit year — ' + item.from + ' to ' + item.to;
+		document.getElementById('leaveEntSaveBtn').textContent = 'Update year';
+		document.getElementById('leaveEntCancelEditBtn').style.display = 'inline-block';
+		document.getElementById('leaveEntFrom').value = item.from;
+		document.getElementById('leaveEntTo').value = item.to;
+		document.getElementById('leaveEntAnnual').value = item.annual;
+		document.getElementById('leaveEntCasual').value = item.casual;
+		document.getElementById('leaveEntFrom').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+	}
+
+	async function persistLeaveEntitlementsList(list) {
+		const subjectId = getLeaveEntManageUserId();
+		const sorted = parseLeaveEntitlements(list);
+		await patchProfileById(subjectId, { leave_entitlements: sorted });
+		if (getLeaveSubjectUserId() === subjectId) {
+			subjectLeaveEntitlementsCache = sorted;
+		}
+		leaveEntCachedList = sorted;
+		renderLeaveYearsTable(sorted);
+		clearLeaveYearForm(true);
+		await refreshCareerSidebar();
+		initRangeInputs();
+		await refreshTable();
+		return sorted;
+	}
+
+	async function deleteLeaveYear(fromKey) {
+		if (!canEditLeaveEntitlementsFor(getLeaveEntManageUserId())) return;
+		const item = leaveEntCachedList.find(x => x.from === fromKey);
+		if (!item) return;
+		if (!confirm('Delete leave year ' + item.from + ' – ' + item.to + '?')) return;
+		try {
+			const next = leaveEntCachedList.filter(x => x.from !== fromKey);
+			await persistLeaveEntitlementsList(next);
+			showToast('Leave year deleted ✓');
+		} catch (err) {
+			showToast('Delete failed: ' + err.message, true);
+		}
+	}
+
+	function refreshLeaveYearsModalView(profile) {
+		const list = parseLeaveEntitlements(profile ? profile.leave_entitlements : []);
+		renderLeaveYearsTable(list);
+		if (!document.getElementById('leaveEntEditFromKey').value) {
+			clearLeaveYearForm(true);
+		}
+	}
+
+	function getLatestLeavePeriod() {
+		const custom = parseLeaveEntitlements(subjectLeaveEntitlementsCache);
+		if (custom.length) {
+			const i = custom.length - 1;
+			const last = custom[i];
+			return {
+				leaveYearNum: i + 1,
+				from: last.from,
+				to: last.to,
+				annual: last.annual,
+				casualDays: last.casual
+			};
+		}
+		const today = fmtIsoLocal(new Date());
+		const active = findLeavePeriodForDate(today);
+		if (active) return active;
+		const periods = getLeaveYearPeriods();
+		if (!periods.length) return null;
+		return periods.slice().sort((a, b) => b.from.localeCompare(a.from))[0];
+	}
+
+	function getCurrentLeavePeriod() {
+		return getLatestLeavePeriod();
+	}
+
+	function formatEntitlementLine(ent) {
+		if (!ent) return '—';
+		if (ent.annual === 0) return 'No annual leave · Casual: ' + fmtDayAmount(ent.casualDays) + ' days';
+		return 'Annual: ' + fmtDayAmount(ent.annual) + ' days · Casual: ' + fmtDayAmount(ent.casualDays) + ' days';
+	}
+
+	function prefillLeaveYearForm(profile) {
+		refreshLeaveYearsModalView(profile);
+	}
+
+	function openManageLeaveYearsModal(open, profileId, displayName) {
+		const targetId = profileId ? String(profileId).trim() : getLeaveSubjectUserId();
+		if (open && !canEditLeaveEntitlementsFor(targetId)) {
+			showToast('Only an administrator can manage leave years.', true);
+			return;
+		}
+		const m = document.getElementById('manageLeaveYearsModal');
+		if (!m) return;
+		m.classList.toggle('open', !!open);
+		m.setAttribute('aria-hidden', open ? 'false' : 'true');
+		if (open) {
+			leaveEntManageProfileId = profileId ? String(profileId).trim() : null;
+			leaveEntManageProfileName = displayName ? String(displayName).trim() : '';
+			document.getElementById('manageLeaveYearsForName').textContent = getLeaveEntManageDisplayName();
+			fetchProfileById(getLeaveEntManageUserId()).then(profile => {
+				if (profile && profile.name && !leaveEntManageProfileName) {
+					leaveEntManageProfileName = profile.name;
+					document.getElementById('manageLeaveYearsForName').textContent = profile.name;
+				}
+				document.getElementById('leaveEntEditFromKey').value = '';
+				refreshLeaveYearsModalView(profile);
+			}).catch(err => {
+				showToast('Could not load leave years: ' + err.message, true);
+				renderLeaveYearsTable([]);
+				clearLeaveYearForm(true);
+			});
+		} else {
+			leaveEntManageProfileId = null;
+			leaveEntManageProfileName = '';
+			leaveEntCachedList = [];
+			document.getElementById('leaveEntEditFromKey').value = '';
+		}
+	}
+
+	async function saveLeaveEntitlements() {
+		const subjectId = getLeaveEntManageUserId();
+		if (!subjectId || !canEditLeaveEntitlementsFor(subjectId)) {
+			showToast('Only an administrator can save leave years.', true);
+			return;
+		}
+		const from = document.getElementById('leaveEntFrom').value.trim();
+		const to = document.getElementById('leaveEntTo').value.trim();
+		const annual = Number(document.getElementById('leaveEntAnnual').value);
+		const casual = Number(document.getElementById('leaveEntCasual').value);
+		const editKey = document.getElementById('leaveEntEditFromKey').value.trim();
+		if (from.length < 10 || to.length < 10) {
+			showToast('Enter both From and To dates.', true);
+			return;
+		}
+		if (to < from) {
+			showToast('“To” must be on or after “From”.', true);
+			return;
+		}
+		const record = {
+			from: from.slice(0, 10),
+			to: to.slice(0, 10),
+			annual: Math.max(0, Number.isNaN(annual) ? 0 : annual),
+			casual: Math.max(0, Number.isNaN(casual) ? 0 : casual)
+		};
+		try {
+			let list = leaveEntCachedList.slice();
+			if (editKey) {
+				list = list.filter(x => x.from !== editKey);
+				list.push(record);
+			} else {
+				const dup = list.findIndex(x => x.from === record.from);
+				if (dup >= 0) list[dup] = record;
+				else list.push(record);
+			}
+			await persistLeaveEntitlementsList(list);
+			showToast(editKey ? 'Leave year updated ✓' : 'Leave year saved ✓');
+		} catch (err) {
+			const msg = String(err.message || '');
+			if (/leave_entitlements|column|42703/i.test(msg)) {
+				showToast('Add leave_entitlements column in Supabase (see comment in page source).', true);
+			} else {
+				showToast('Could not save leave year: ' + msg, true);
+			}
+		}
+	}
+
+	function getDefaultPolicyEntitlement(leaveYearNum) {
+		const n = parseInt(leaveYearNum, 10);
+		if (Number.isNaN(n) || n <= 2) return { annual: 0, casualDays: 6 };
+		return { annual: 10, casualDays: 7 };
 	}
 
 	function applyProfileSession(profile) {
@@ -924,7 +1254,6 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 			}
 			updateAdminUi();
 			if (isAdmin()) await populateLeaveManageUserSelect();
-			renderEntitlementTable();
 			initRangeInputs();
 			await refreshTable();
 			openEditProfileModal(false);
@@ -986,12 +1315,21 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(p.role || 'user') + '</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;font-weight:600;">' + pinCell + '</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;">' +
+					'<button type="button" class="btn-edit admin-manage-leave-years-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Leave years</button> ' +
 					'<button type="button" class="btn-edit admin-manage-career-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Career</button> ' +
 					'<button type="button" class="btn-edit admin-reset-pin-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Reset PIN</button> ' +
 					'<button type="button" class="btn-danger admin-remove-user-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '"' +
 					(p.id === getUserId() ? ' disabled title="Switch user first"' : '') + '>Remove</button>' +
 					'</td></tr>';
 			}).join('');
+			tbody.querySelectorAll('.admin-manage-leave-years-btn').forEach(btn => {
+				btn.onclick = () => {
+					const id = btn.getAttribute('data-id');
+					const name = btn.getAttribute('data-name');
+					openAdminUsersModal(false);
+					openManageLeaveYearsModal(true, id, name);
+				};
+			});
 			tbody.querySelectorAll('.admin-manage-career-btn').forEach(btn => {
 				btn.onclick = () => {
 					const id = btn.getAttribute('data-id');
@@ -1185,7 +1523,6 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 					} catch (e) {
 						showToast('Join date saved locally; profile sync failed: ' + e.message, true);
 					}
-					renderEntitlementTable();
 					initRangeInputs();
 					refreshTable();
 				}
@@ -1195,8 +1532,7 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		await refreshCareerSidebar();
 		const j = getLeaveSubjectJoinDate();
 		joinInp.value = j.getFullYear() + '-' + String(j.getMonth()+1).padStart(2,'0') + '-' + String(j.getDate()).padStart(2,'0');
-		renderEntitlementTable();
-		initRangeInputs();
+		initRangeInputs(getDefaultSummaryLeavePeriod());
 		updateLeaveEntriesHeading();
 		refreshTable();
 	}
@@ -1266,14 +1602,32 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		if (isAdmin() && subj && sid && subj !== sid) {
 			const sel = document.getElementById('leaveManageUserSelect');
 			const opt = sel && sel.selectedOptions[0];
-			el.textContent = 'Leave entries — ' + (opt ? opt.textContent : subj);
+			el.textContent = 'Leave summary — ' + (opt ? opt.textContent : subj);
 		} else {
-			el.textContent = 'My leave entries';
+			el.textContent = 'My leave summary';
+		}
+	}
+
+	function openAddLeaveModal(open) {
+		const m = document.getElementById('addLeaveModal');
+		if (!m) return;
+		m.classList.toggle('open', !!open);
+		m.setAttribute('aria-hidden', open ? 'false' : 'true');
+		if (open && !editingEntryId) {
+			document.getElementById('leaveForm').reset();
+			document.getElementById('addLeaveModalTitle').textContent = 'Add leave';
+			document.getElementById('addBtn').textContent = 'Add leave';
+			document.getElementById('cancelEditBtn').textContent = 'Cancel';
+			document.getElementById('statusMsg').textContent = '';
+		}
+		if (!open) {
+			document.getElementById('leaveForm').reset();
+			clearEditMode();
 		}
 	}
 
 	function onLeaveManageUserChange() {
-		clearEditMode();
+		openAddLeaveModal(false);
 		const sel = document.getElementById('leaveManageUserSelect');
 		const joinInp = document.getElementById('joinDateInput');
 		const opt = sel && sel.selectedOptions[0];
@@ -1281,8 +1635,7 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		if (joinInp && jd && jd.length >= 10) joinInp.value = jd.slice(0, 10);
 		if (sel && sel.value === getUserId()) setJoinDate(joinInp.value);
 		refreshCareerSidebar().then(() => {
-			renderEntitlementTable();
-			initRangeInputs();
+			initRangeInputs(getDefaultSummaryLeavePeriod());
 			updateLeaveEntriesHeading();
 			refreshTable();
 		});
@@ -1290,16 +1643,90 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 
 	function ensurePeriodCoversDate(isoDate) {
 		if (!isoDate || isoDate.length < 10) return;
-		const fromInp = document.getElementById('periodFromInput');
-		const toInp = document.getElementById('periodToInput');
-		if (!fromInp || !toInp || !fromInp.value || !toInp.value) return;
-		if (isoDate < fromInp.value) fromInp.value = isoDate;
-		if (isoDate > toInp.value) toInp.value = isoDate;
+		const period = findLeavePeriodForDate(isoDate);
+		if (!period) return;
+		const val = leaveYearValueForPeriod(period);
+		const sorted = getSortedLeaveYearPeriods();
+		if (!periodLeaveYearExpanded && sorted.length > PERIOD_LEAVE_YEAR_VISIBLE) {
+			const top = sorted.slice(0, PERIOD_LEAVE_YEAR_VISIBLE);
+			if (!top.some(p => leaveYearValueForPeriod(p) === val)) {
+				periodLeaveYearExpanded = true;
+			}
+		}
+		periodLeaveYearLastVal = val;
+		populatePeriodLeaveYearSelect(null, val);
+	}
+
+	function leaveYearValueForPeriod(p) {
+		return p ? p.from + '|' + p.to : '';
+	}
+
+	const PERIOD_LEAVE_YEAR_VISIBLE = 4;
+	const PERIOD_LEAVE_YEAR_SHOW_MORE = '__show_more__';
+	let periodLeaveYearExpanded = false;
+	let periodLeaveYearLastVal = '';
+
+	function getSortedLeaveYearPeriods() {
+		return getLeaveYearPeriods().slice().sort((a, b) => b.leaveYearNum - a.leaveYearNum);
+	}
+
+	function buildLeaveYearOptionHtml(p) {
+		const label = ordinalLeaveYear(p.leaveYearNum) + ' year — ' +
+			fmt(parseYmdLocal(p.from)) + ' – ' + fmt(parseYmdLocal(p.to));
+		return '<option value="' + escHtml(leaveYearValueForPeriod(p)) + '">' + escHtml(label) + '</option>';
+	}
+
+	function buildPeriodLeaveYearSelectHtml(periodsSorted, expanded, selectedVal) {
+		if (!periodsSorted.length) return '<option value="">No leave years</option>';
+		let visible = periodsSorted;
+		if (!expanded && periodsSorted.length > PERIOD_LEAVE_YEAR_VISIBLE) {
+			visible = periodsSorted.slice(0, PERIOD_LEAVE_YEAR_VISIBLE);
+			if (selectedVal && !visible.some(p => leaveYearValueForPeriod(p) === selectedVal)) {
+				const extra = periodsSorted.find(p => leaveYearValueForPeriod(p) === selectedVal);
+				if (extra) {
+					visible = visible.concat([extra]).sort((a, b) => b.leaveYearNum - a.leaveYearNum);
+				}
+			}
+		}
+		let html = visible.map(buildLeaveYearOptionHtml).join('');
+		if (!expanded && periodsSorted.length > PERIOD_LEAVE_YEAR_VISIBLE) {
+			html += '<option value="' + PERIOD_LEAVE_YEAR_SHOW_MORE + '" class="show-more-option">Show more…</option>';
+		}
+		return html;
+	}
+
+	function getSelectedPeriodRange() {
+		const sel = document.getElementById('periodLeaveYearSelect');
+		if (!sel || !sel.value || sel.value === PERIOD_LEAVE_YEAR_SHOW_MORE) return { from: '', to: '' };
+		const parts = sel.value.split('|');
+		return { from: parts[0] || '', to: parts[1] || '' };
+	}
+
+	/** Leave year that contains today, or latest/first if today is outside all periods. */
+	function getDefaultSummaryLeavePeriod() {
+		const today = fmtIsoLocal(new Date());
+		const active = findLeavePeriodForDate(today);
+		if (active) return active;
+		return getLatestLeavePeriod() || getLeaveYearPeriods()[0] || null;
 	}
 
 	// ── Period helpers ─────────────────────────────────────────────
 	/** Cached career timeline for the leave subject — drives leave-year windows when set. */
 	let subjectCareerTimelineCache = null;
+	/** Custom leave year periods + day counts set by employee or admin. */
+	let subjectLeaveEntitlementsCache = null;
+
+	function buildLeaveYearPeriodsFromEntitlements(raw) {
+		const list = parseLeaveEntitlements(raw);
+		if (!list.length) return null;
+		return list.map((e, i) => ({
+			leaveYearNum: i + 1,
+			from: e.from,
+			to: e.to,
+			annual: e.annual,
+			casualDays: e.casual
+		}));
+	}
 
 	function addYearsToDate(d, years) {
 		return new Date(d.getFullYear() + years, d.getMonth(), d.getDate());
@@ -1363,6 +1790,8 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 	}
 
 	function getLeaveYearPeriods() {
+		const fromEnt = buildLeaveYearPeriodsFromEntitlements(subjectLeaveEntitlementsCache);
+		if (fromEnt) return fromEnt;
 		const fromCareer = buildLeaveYearPeriodsFromCareer(subjectCareerTimelineCache);
 		return fromCareer || buildLeaveYearPeriodsFromJoinDate();
 	}
@@ -1429,23 +1858,6 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		}
 	}
 
-	/** Maps current From date to 1st / 2nd / … leave year since join (same rules as periods above). */
-	function updatePeriodLeaveYearLabel() {
-		const el = document.getElementById('periodLeaveYearBadge');
-		if (!el) return;
-		const fromDate = document.getElementById('periodFromInput').value;
-		if (!fromDate || fromDate.length < 10) {
-			el.textContent = '';
-			return;
-		}
-		const py = getLeaveYearNumForDate(fromDate);
-		if (py == null) {
-			el.textContent = '(before first leave year)';
-			return;
-		}
-		el.textContent = '(' + ordinalLeaveYear(py) + ' year)';
-	}
-
 	// ── Entitlement ────────────────────────────────────────────────
 	/**
 	 * Policy (aligned with section 2 on this page):
@@ -1458,14 +1870,19 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		return parseInt(leaveYearNum, 10);
 	}
 	function getEntitlement(leaveYearNum) {
-		const n = getLeaveYearNumber(leaveYearNum);
-		if (Number.isNaN(n) || n <= 2) return { annual: 0, casualDays: 6 };
-		return { annual: 10, casualDays: 7 };
+		const p = getLeaveYearPeriods().find(x => x.leaveYearNum === parseInt(leaveYearNum, 10));
+		if (p && p.annual != null && p.casualDays != null) {
+			return { annual: Number(p.annual), casualDays: Number(p.casualDays) };
+		}
+		return getDefaultPolicyEntitlement(leaveYearNum);
 	}
 	function getEntitlementForDate(dateStr) {
-		const n = getLeaveYearNumForDate(dateStr);
-		if (n == null) return { annual: 0, casualDays: 6 };
-		return getEntitlement(n);
+		const p = findLeavePeriodForDate(dateStr);
+		if (!p) return { annual: 0, casualDays: 6 };
+		if (p.annual != null && p.casualDays != null) {
+			return { annual: Number(p.annual), casualDays: Number(p.casualDays) };
+		}
+		return getEntitlement(p.leaveYearNum);
 	}
 
 	/** Format leave amounts in days (shows one decimal when needed, e.g. 5.5). */
@@ -1480,24 +1897,6 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		if (e.full_or_half === 'covered') return '0';
 		const u = e.full_or_half === 'full' ? 1 : 0.5;
 		return fmtDayAmount(u);
-	}
-
-	function renderEntitlementTable() {
-		const j = getLeaveSubjectJoinDate();
-		document.getElementById('summaryJoinDate').textContent = fmt(j);
-		const periods = getLeaveYearPeriods();
-		const rows = periods.slice(0, 6).map(p => {
-			const ent = getEntitlement(p.leaveYearNum);
-			const entText = ent.annual === 0
-				? 'No annual. Casual: ' + ent.casualDays + ' days.'
-				: 'Annual ' + ent.annual + ' days, Casual ' + ent.casualDays + ' days.';
-			return '<tr><td>' + escHtml(fmt(parseYmdLocal(p.from)) + ' – ' + fmt(parseYmdLocal(p.to))) +
-				' <span class="sub">(' + ordinalLeaveYear(p.leaveYearNum) + ' year)</span></td><td>' + entText + '</td></tr>';
-		}).join('');
-		const more = periods.length > 6
-			? '<tr><td colspan="2" class="sub">Further leave years continue from each role start date (Present) or join date if no career timeline.</td></tr>'
-			: '';
-		document.getElementById('entitlementTableBody').innerHTML = rows + more;
 	}
 
 	// ── Supabase API ───────────────────────────────────────────────
@@ -1550,7 +1949,10 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 
 	// ── Render balance ─────────────────────────────────────────────
 	function renderBalance(fromDate, toDate, entries) {
-		const ent = getEntitlementForDate(fromDate);
+		const summaryPeriod = getLatestLeavePeriod();
+		const ent = summaryPeriod && fromDate === summaryPeriod.from && toDate === summaryPeriod.to
+			? getEntitlement(summaryPeriod.leaveYearNum)
+			: getEntitlementForDate(fromDate);
 		let annualUsed = 0, casualUsedDays = 0;
 		(entries || []).forEach(e => {
 			if (e.full_or_half === 'covered') return;
@@ -1577,7 +1979,8 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 	function clearEditMode(clearStatus) {
 		editingEntryId = null;
 		document.getElementById('addBtn').textContent = 'Add leave';
-		document.getElementById('cancelEditBtn').style.display = 'none';
+		document.getElementById('addLeaveModalTitle').textContent = 'Add leave';
+		document.getElementById('cancelEditBtn').textContent = 'Cancel';
 		if (clearStatus !== false) document.getElementById('statusMsg').textContent = '';
 	}
 
@@ -1619,7 +2022,7 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 				'<td>' + typeLabel + '</td>' +
 				'<td>' + fullHalf + '</td>' +
 				'<td>' + dayAmt + '</td>' +
-				'<td>' + (e.notes || '—') + '</td>' +
+				'<td style="max-width:220px;word-break:break-word;">' + esc(e.notes || '—') + '</td>' +
 				'<td><button type="button" class="btn-edit edit-btn">Edit</button>' +
 				'<button type="button" class="btn-danger delete-btn">Delete</button></td></tr>';
 		}).join('');
@@ -1632,10 +2035,11 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 				document.getElementById('fullOrHalf').value = tr.getAttribute('data-full-or-half');
 				document.getElementById('notes').value = tr.getAttribute('data-notes') || '';
 				document.getElementById('addBtn').textContent = 'Update leave';
-				document.getElementById('cancelEditBtn').style.display = 'inline-block';
-				document.getElementById('statusMsg').textContent = 'Editing this row — adjust fields, then Update leave.';
+				document.getElementById('addLeaveModalTitle').textContent = 'Edit leave';
+				document.getElementById('cancelEditBtn').textContent = 'Cancel edit';
+				document.getElementById('statusMsg').textContent = 'Adjust fields, then Update leave.';
 				document.getElementById('statusMsg').style.color = '#555';
-				document.getElementById('leaveForm').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
+				openAddLeaveModal(true);
 			};
 		});
 		tbody.querySelectorAll('.delete-btn').forEach(btn => {
@@ -1643,7 +2047,7 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 				const id = btn.closest('tr').getAttribute('data-id');
 				try {
 					await deleteEntry(id);
-					if (editingEntryId === id) clearEditMode();
+					if (editingEntryId === id) openAddLeaveModal(false);
 					showToast('Entry deleted.');
 					await refreshTable();
 				} catch(err) {
@@ -1655,9 +2059,9 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 
 	// ── Refresh ────────────────────────────────────────────────────
 	async function refreshTable() {
-		const fromDate = document.getElementById('periodFromInput').value;
-		const toDate = document.getElementById('periodToInput').value;
-		updatePeriodLeaveYearLabel();
+		const range = getSelectedPeriodRange();
+		const fromDate = range.from;
+		const toDate = range.to;
 		if (!fromDate || !toDate) return;
 		if (fromDate > toDate) {
 			showToast('Invalid period: "From" date must be before "To" date.', true);
@@ -1681,24 +2085,68 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 	}
 
 	// ── Period range inputs ────────────────────────────────────────
-	/** Default From/To = the leave-year window that contains today's date (local). If today is before join, use join year's window. */
-	function initRangeInputs() {
-		const todayIso = fmtIsoLocal(new Date());
-		const period = findLeavePeriodForDate(todayIso) || getLeaveYearPeriods()[0];
-		const fromInp = document.getElementById('periodFromInput');
-		const toInp = document.getElementById('periodToInput');
-		if (period) {
-			fromInp.value = period.from;
-			toInp.value = period.to;
+	let periodLeaveYearAttached = false;
+
+	function onPeriodLeaveYearChange() {
+		const sel = document.getElementById('periodLeaveYearSelect');
+		if (!sel) return;
+		if (sel.value === PERIOD_LEAVE_YEAR_SHOW_MORE) {
+			periodLeaveYearExpanded = true;
+			populatePeriodLeaveYearSelect(null, periodLeaveYearLastVal);
+			return;
 		}
-		fromInp.onchange = refreshTable;
-		toInp.onchange = refreshTable;
-		updatePeriodLeaveYearLabel();
+		if (sel.value) periodLeaveYearLastVal = sel.value;
+		refreshTable();
+	}
+
+	function populatePeriodLeaveYearSelect(preferredPeriod, forceVal) {
+		const sel = document.getElementById('periodLeaveYearSelect');
+		if (!sel) return;
+		const periods = getSortedLeaveYearPeriods();
+		if (!periods.length) {
+			sel.innerHTML = '<option value="">No leave years</option>';
+			periodLeaveYearLastVal = '';
+			return;
+		}
+		const prev = forceVal || (sel.value && sel.value !== PERIOD_LEAVE_YEAR_SHOW_MORE ? sel.value : periodLeaveYearLastVal);
+		sel.innerHTML = buildPeriodLeaveYearSelectHtml(periods, periodLeaveYearExpanded, prev);
+		const preferredVal = preferredPeriod ? leaveYearValueForPeriod(preferredPeriod) : '';
+		if (preferredVal && periods.some(p => leaveYearValueForPeriod(p) === preferredVal)) {
+			sel.value = preferredVal;
+		} else if (prev && periods.some(p => leaveYearValueForPeriod(p) === prev)) {
+			sel.value = prev;
+		} else {
+			const def = getDefaultSummaryLeavePeriod();
+			if (def) sel.value = leaveYearValueForPeriod(def);
+		}
+		if (sel.value && sel.value !== PERIOD_LEAVE_YEAR_SHOW_MORE) {
+			periodLeaveYearLastVal = sel.value;
+		}
+		if (!periodLeaveYearAttached) {
+			periodLeaveYearAttached = true;
+			sel.addEventListener('change', onPeriodLeaveYearChange);
+		}
+	}
+
+	/** Sync leave year dropdown. Pass a period to select it; omit to keep current pick if still valid. */
+	function initRangeInputs(preferredPeriod) {
+		if (preferredPeriod !== undefined && preferredPeriod !== null) {
+			periodLeaveYearExpanded = false;
+			periodLeaveYearLastVal = leaveYearValueForPeriod(preferredPeriod);
+		}
+		populatePeriodLeaveYearSelect(preferredPeriod === undefined ? null : preferredPeriod);
 	}
 
 	document.getElementById('cancelEditBtn').onclick = function() {
-		document.getElementById('leaveForm').reset();
-		clearEditMode();
+		openAddLeaveModal(false);
+	};
+
+	document.getElementById('openAddLeaveBtn').onclick = function() {
+		if (!getUserId()) {
+			showToast('Please sign in with your PIN first.', true);
+			return;
+		}
+		openAddLeaveModal(true);
 	};
 
 	// ── Form submit ────────────────────────────────────────────────
@@ -1786,6 +2234,7 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 			}
 			ensurePeriodCoversDate(leaveDate);
 			await refreshTable();
+			setTimeout(() => openAddLeaveModal(false), isEdit ? 400 : 600);
 		} catch(err) {
 			statusMsg.textContent = 'Error: ' + err.message;
 			statusMsg.style.color = '#c00';
@@ -1809,6 +2258,13 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 			}
 		});
 		document.getElementById('editProfileBtn').onclick = () => openEditProfileModal(true);
+		document.getElementById('manageLeaveYearsBtn').onclick = () => openManageLeaveYearsModal(true);
+		document.getElementById('leaveEntSaveBtn').onclick = saveLeaveEntitlements;
+		document.getElementById('leaveEntCancelEditBtn').onclick = () => clearLeaveYearForm(true);
+		document.getElementById('leaveEntCloseBtn').onclick = () => openManageLeaveYearsModal(false);
+		document.getElementById('manageLeaveYearsModal').addEventListener('click', function(ev) {
+			if (ev.target === this) openManageLeaveYearsModal(false);
+		});
 		document.getElementById('editProfileCancelBtn').onclick = () => openEditProfileModal(false);
 		document.getElementById('editProfileSaveBtn').onclick = saveEditProfile;
 		document.getElementById('editProfileModal').addEventListener('click', function(ev) {
@@ -1840,6 +2296,10 @@ Example value: [{"title":"Internship Person","from":"2024-01-01","to":"2024-06-3
 		});
 
 		document.getElementById('leaveManageUserSelect').addEventListener('change', onLeaveManageUserChange);
+
+		document.getElementById('addLeaveModal').addEventListener('click', function(ev) {
+			if (ev.target === this) openAddLeaveModal(false);
+		});
 
 		document.getElementById('sidebarManageCareerBtn').onclick = () => openManageCareerModal(true);
 		document.getElementById('careerAddRowBtn').onclick = addCareerEditRow;
