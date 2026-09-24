@@ -437,22 +437,16 @@
 <div class="toast" id="toast"></div>
 
 <!--
-Supabase: admin Remove user runs DELETE on leave_entries then leave_profiles.
-If remove fails with 401/403, add RLS policies, e.g.:
-  create policy "anon delete entries" on leave_entries for delete using (true);
-  create policy "anon delete profiles" on leave_profiles for delete using (true);
-Admin user list selects pin — restrict API keys / RLS in production.
+Data is stored in MySQL through the API in server.js (tables in schema.sql).
+Open this page via the server (npm start → http://localhost:3000), not as a file.
+Admin user list includes PINs — restrict access to the server in production.
 
-Career timeline (run once in Supabase SQL editor):
-  alter table leave_profiles add column if not exists career_timeline jsonb default '[]'::jsonb;
-  alter table leave_profiles add column if not exists leave_entitlements jsonb default '[]'::jsonb;
 Example career: [{"title":"Intern","from":"2025-03-03","to":"2025-12-03"},{"title":"Associate QA","from":"2025-12-03","to":null}]
 Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"casual":6},{"from":"2025-12-03","to":"2026-12-03","annual":0,"casual":6}]
 -->
 
 <script>
-	const SUPABASE_URL = 'https://bqjtlemxbihnnsqhnrqq.supabase.co';
-	const SUPABASE_KEY = 'sb_publishable_UBXiN3wtRyJVYIXd-c9zrg_Tw90LHlC';
+	const API_BASE = '/api';
 	const STORAGE_KEY_JOIN = 'delivergate_join_date';
 	const STORAGE_KEY_USER = 'delivergate_user_id';
 	const STORAGE_KEY_PROFILE_NAME = 'delivergate_profile_name';
@@ -512,40 +506,37 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 	}
 
 	async function fetchProfileByPin(pin) {
-		const p = String(pin || '').trim();
-		const rows = await sbFetch(
-			'/rest/v1/leave_profiles?pin=eq.' + encodeURIComponent(p) + '&select=id,name,join_date,role',
-			{ method: 'GET' }
-		);
-		return Array.isArray(rows) && rows.length ? rows[0] : null;
+		return await apiFetch('/login', {
+			method: 'POST',
+			body: JSON.stringify({ pin: String(pin || '').trim() })
+		});
 	}
 
 	async function insertProfile(row) {
-		return await sbFetch('/rest/v1/leave_profiles', { method: 'POST', body: JSON.stringify(row) });
+		return await apiFetch('/profiles', { method: 'POST', body: JSON.stringify(row) });
 	}
 
 	async function patchProfileJoinDate(profileId, joinDateIso) {
 		if (!profileId || !joinDateIso) return;
-		await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId), {
-			method: 'PATCH',
-			body: JSON.stringify({ join_date: joinDateIso })
-		});
+		await patchProfileById(profileId, { join_date: joinDateIso });
 	}
 
 	async function patchMyProfile(patch) {
 		const id = getUserId();
 		if (!id) throw new Error('Not signed in');
-		await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(id), {
+		await patchProfileById(id, patch);
+	}
+
+	async function patchProfileById(profileId, patch) {
+		await apiFetch('/profiles/' + encodeURIComponent(profileId), {
 			method: 'PATCH',
 			body: JSON.stringify(patch)
 		});
 	}
 
-	async function patchProfileById(profileId, patch) {
-		await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId), {
-			method: 'PATCH',
-			body: JSON.stringify(patch)
-		});
+	async function fetchAllProfiles() {
+		const rows = await apiFetch('/profiles', { method: 'GET' });
+		return Array.isArray(rows) ? rows : [];
 	}
 
 	function showMainApp(show) {
@@ -646,32 +637,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 
 	async function fetchProfileById(profileId) {
 		if (!profileId) return null;
-		const base = '/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId);
-		let p = null;
-		try {
-			const rows = await sbFetch(base + '&select=id,name,join_date,career_timeline,leave_entitlements', { method: 'GET' });
-			p = Array.isArray(rows) && rows.length ? rows[0] : null;
-		} catch (e1) {
-			try {
-				const rows = await sbFetch(base + '&select=id,name,join_date,career_timeline', { method: 'GET' });
-				p = Array.isArray(rows) && rows.length ? rows[0] : null;
-				if (p && p.leave_entitlements == null) p.leave_entitlements = [];
-			} catch (e2) {
-				try {
-					const rows = await sbFetch(base + '&select=id,name,join_date,leave_entitlements', { method: 'GET' });
-					p = Array.isArray(rows) && rows.length ? rows[0] : null;
-					if (p && p.career_timeline == null) p.career_timeline = [];
-				} catch (e3) {
-					const rows = await sbFetch(base + '&select=id,name,join_date', { method: 'GET' });
-					p = Array.isArray(rows) && rows.length ? rows[0] : null;
-					if (p) {
-						p.career_timeline = [];
-						p.leave_entitlements = [];
-					}
-				}
-			}
-		}
-		return p;
+		return await apiFetch('/profiles/' + encodeURIComponent(profileId), { method: 'GET' });
 	}
 
 	async function fetchSubjectProfile() {
@@ -893,12 +859,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			await refreshTable();
 			showToast('Career timeline saved for ' + getCareerManageDisplayName() + ' ✓');
 		} catch (err) {
-			const msg = String(err.message || '');
-			if (/career_timeline|column|42703/i.test(msg)) {
-				showToast('Add career_timeline column in Supabase first (see comment in page source).', true);
-			} else {
-				showToast('Could not save career timeline: ' + msg, true);
-			}
+			showToast('Could not save career timeline: ' + String(err.message || ''), true);
 		}
 	}
 
@@ -1152,12 +1113,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			await persistLeaveEntitlementsList(list);
 			showToast(editKey ? 'Leave year updated ✓' : 'Leave year saved ✓');
 		} catch (err) {
-			const msg = String(err.message || '');
-			if (/leave_entitlements|column|42703/i.test(msg)) {
-				showToast('Add leave_entitlements column in Supabase (see comment in page source).', true);
-			} else {
-				showToast('Could not save leave year: ' + msg, true);
-			}
+			showToast('Could not save leave year: ' + String(err.message || ''), true);
 		}
 	}
 
@@ -1297,8 +1253,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		if (!tbody) return;
 		tbody.innerHTML = '<tr><td colspan="6" class="sub">Loading…</td></tr>';
 		try {
-			const rows = await sbFetch('/rest/v1/leave_profiles?select=id,name,join_date,role,pin&order=name.asc', { method: 'GET' });
-			const list = Array.isArray(rows) ? rows : [];
+			const list = await fetchAllProfiles();
 			if (list.length === 0) {
 				tbody.innerHTML = '<tr><td colspan="6" class="sub">No profiles yet.</td></tr>';
 				return;
@@ -1416,8 +1371,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		}
 		if (!confirm('Remove user "' + displayName + '"?\n\nTheir profile and all leave entries will be deleted. This cannot be undone.')) return;
 		try {
-			await sbFetch('/rest/v1/leave_entries?user_id=eq.' + encodeURIComponent(profileId), { method: 'DELETE' });
-			await sbFetch('/rest/v1/leave_profiles?id=eq.' + encodeURIComponent(profileId), { method: 'DELETE' });
+			// The server deletes the profile's leave entries along with it.
+			await apiFetch('/profiles/' + encodeURIComponent(profileId), { method: 'DELETE' });
 			showToast('User removed ✓');
 			await refreshAdminUsersList();
 			await populateLeaveManageUserSelect();
@@ -1570,8 +1525,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			return;
 		}
 		try {
-			const rows = await sbFetch('/rest/v1/leave_profiles?select=id,name,join_date,role&order=name.asc', { method: 'GET' });
-			const list = Array.isArray(rows) ? rows : [];
+			const list = await fetchAllProfiles();
 			const mine = getUserId();
 			const filtered = list.filter(p => p.id === mine || String(p.role || 'user').toLowerCase() !== 'admin');
 			filtered.sort((a, b) => {
@@ -1899,21 +1853,19 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		return fmtDayAmount(u);
 	}
 
-	// ── Supabase API ───────────────────────────────────────────────
-	async function sbFetch(path, options = {}) {
-		const res = await fetch(SUPABASE_URL + path, {
+	// ── Server API (server.js → MySQL) ─────────────────────────────
+	async function apiFetch(path, options = {}) {
+		const res = await fetch(API_BASE + path, {
 			...options,
 			headers: {
-				'apikey': SUPABASE_KEY,
-				'Authorization': 'Bearer ' + SUPABASE_KEY,
 				'Content-Type': 'application/json',
-				'Prefer': 'return=representation',
 				...(options.headers || {})
 			}
 		});
 		const text = await res.text();
-		const data = text ? JSON.parse(text) : [];
-		if (!res.ok) throw new Error((data && data.message) || 'Supabase error ' + res.status);
+		let data = null;
+		try { data = text ? JSON.parse(text) : null; } catch { /* non-JSON error page */ }
+		if (!res.ok) throw new Error((data && data.message) || 'Server error ' + res.status);
 		return data;
 	}
 
@@ -1925,23 +1877,20 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 	async function fetchEntriesByRange(fromDate, toDate) {
 		const userId = getLeaveSubjectUserId();
 		if (!userId) return [];
-		return await sbFetch(
-			'/rest/v1/leave_entries?user_id=eq.' + encodeURIComponent(userId) +
-			'&date=gte.' + fromDate + '&date=lte.' + toDate + '&order=date.desc',
-			{ method: 'GET' }
-		);
+		const qs = new URLSearchParams({ user_id: userId, from: fromDate, to: toDate });
+		return await apiFetch('/entries?' + qs, { method: 'GET' });
 	}
 
 	async function insertEntry(entry) {
-		return await sbFetch('/rest/v1/leave_entries', { method: 'POST', body: JSON.stringify(entry) });
+		return await apiFetch('/entries', { method: 'POST', body: JSON.stringify(entry) });
 	}
 
 	async function deleteEntry(id) {
-		return await sbFetch('/rest/v1/leave_entries?id=eq.' + encodeURIComponent(id), { method: 'DELETE' });
+		return await apiFetch('/entries/' + encodeURIComponent(id), { method: 'DELETE' });
 	}
 
 	async function updateEntry(id, patch) {
-		return await sbFetch('/rest/v1/leave_entries?id=eq.' + encodeURIComponent(id), {
+		return await apiFetch('/entries/' + encodeURIComponent(id), {
 			method: 'PATCH',
 			body: JSON.stringify(patch)
 		});

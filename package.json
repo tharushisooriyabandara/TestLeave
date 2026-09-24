@@ -1,0 +1,20 @@
+{
+  "name": "leave-logs",
+  "version": "1.0.0",
+  "private": true,
+  "description": "Delivergate leave logs: web page + Node API on MySQL",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js",
+    "setup-db": "node scripts/setup-db.js",
+    "import-supabase": "node scripts/import-from-supabase.js",
+    "import-backup": "node scripts/import-pg-backup.js"
+  },
+  "engines": {
+    "node": "22.x"
+  },
+  "dependencies": {
+    "express": "^5.2.1",
+    "mysql2": "^3.24.4"
+  }
+}
