@@ -4,3 +4,5 @@ backups/
 ca.pem
 aiven.txt
 *.backup
+tidb.txt
+.env.docker-local
