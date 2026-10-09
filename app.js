@@ -100,6 +100,28 @@ app.post('/api/entries', async (req, res) => {
 	res.status(201).json({ id: row.id });
 });
 
+// Saves several entries (e.g. a date range) in one transaction: all or nothing.
+app.post('/api/entries/batch', async (req, res) => {
+	const rows = (Array.isArray(req.body) ? req.body : []).map(b => pick(b, ENTRY_FIELDS));
+	if (!rows.length) throw badRequest('Send an array of entries');
+	if (rows.some(r => !r.id || !r.user_id)) throw badRequest('id and user_id are required');
+	const values = rows.map(r => ENTRY_FIELDS.map(f => r[f] === undefined ? null : r[f]));
+	const conn = await pool.getConnection();
+	try {
+		await conn.beginTransaction();
+		await conn.query(
+			'INSERT INTO leave_entries (id, user_id, type, `date`, full_or_half, notes, join_date) VALUES ?',
+			[values]);
+		await conn.commit();
+	} catch (err) {
+		await conn.rollback();
+		throw err;
+	} finally {
+		conn.release();
+	}
+	res.status(201).json({ ids: rows.map(r => r.id) });
+});
+
 app.patch('/api/entries/:id', async (req, res) => {
 	const patch = pick(req.body, ENTRY_FIELDS.filter(f => f !== 'id' && f !== 'user_id'));
 	if (!Object.keys(patch).length) throw badRequest('Nothing to update');

@@ -290,8 +290,17 @@
 				</select>
 			</div>
 			<div class="form-row">
-				<label for="leaveDate">Leave date</label>
+				<label for="leaveDate" id="leaveDateLabel">Leave date (from)</label>
 				<input type="date" id="leaveDate" required>
+			</div>
+			<div class="form-row leave-range-row">
+				<label for="leaveDateTo">To date <span class="sub" style="font-weight:400;">(optional — leave blank for one day)</span></label>
+				<input type="date" id="leaveDateTo">
+			</div>
+			<div class="form-row leave-range-row">
+				<label style="display:flex;align-items:center;gap:0.4rem;font-weight:400;color:inherit;">
+					<input type="checkbox" id="skipWeekends" checked style="width:auto;"> Skip Saturdays &amp; Sundays
+				</label>
 			</div>
 			<div class="form-row">
 				<label>Full / Half / Covered</label>
@@ -1567,6 +1576,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		if (!m) return;
 		m.classList.toggle('open', !!open);
 		m.setAttribute('aria-hidden', open ? 'false' : 'true');
+		// A date range only makes sense when adding; an edit changes one entry.
+		m.querySelectorAll('.leave-range-row').forEach(r => { r.style.display = editingEntryId ? 'none' : ''; });
+		document.getElementById('leaveDateLabel').textContent = editingEntryId ? 'Leave date' : 'Leave date (from)';
 		if (open && !editingEntryId) {
 			document.getElementById('leaveForm').reset();
 			document.getElementById('addLeaveModalTitle').textContent = 'Add leave';
@@ -1869,11 +1881,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		return data;
 	}
 
-	async function fetchEntriesForDate(leaveDate) {
-		const period = findLeavePeriodForDate(leaveDate);
-		if (!period) return [];
-		return await fetchEntriesByRange(period.from, period.to);
-	}
 	async function fetchEntriesByRange(fromDate, toDate) {
 		const userId = getLeaveSubjectUserId();
 		if (!userId) return [];
@@ -1883,6 +1890,23 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 
 	async function insertEntry(entry) {
 		return await apiFetch('/entries', { method: 'POST', body: JSON.stringify(entry) });
+	}
+
+	async function insertEntries(entries) {
+		return await apiFetch('/entries/batch', { method: 'POST', body: JSON.stringify(entries) });
+	}
+
+	/** Every ISO date from `from` to `to` inclusive, optionally without Sat/Sun. */
+	function expandLeaveDates(from, to, skipWeekends) {
+		const out = [];
+		const d = new Date(from + 'T00:00:00Z');
+		const end = new Date(to + 'T00:00:00Z');
+		while (d <= end) {
+			const dow = d.getUTCDay();
+			if (!skipWeekends || (dow !== 0 && dow !== 6)) out.push(d.toISOString().slice(0, 10));
+			d.setUTCDate(d.getUTCDate() + 1);
+		}
+		return out;
 	}
 
 	async function deleteEntry(id) {
@@ -2113,38 +2137,71 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const addBtn = document.getElementById('addBtn');
 		const isEdit = !!editingEntryId;
 
-		const leaveYearNum = getLeaveYearNumForDate(leaveDate);
-		if (leaveYearNum == null) {
+		// Adding with a "To" date saves one entry per day in the range.
+		const leaveDateTo = isEdit ? '' : document.getElementById('leaveDateTo').value;
+		const isRange = !!leaveDateTo && leaveDateTo !== leaveDate;
+		if (isRange && leaveDateTo < leaveDate) {
+			showToast('"To" date must be on or after the leave date.', true);
+			return;
+		}
+		let dates = isRange
+			? expandLeaveDates(leaveDate, leaveDateTo, document.getElementById('skipWeekends').checked)
+			: [leaveDate];
+		if (!dates.length) {
+			showToast('No working days in that range.', true);
+			return;
+		}
+		if (dates.length > 60) {
+			showToast('Please add at most 60 days at a time.', true);
+			return;
+		}
+		if (dates.some(d => getLeaveYearNumForDate(d) == null)) {
 			showToast('Leave date must fall within a leave year (on or after joining / first career role).', true);
 			return;
 		}
 
-		// Check balance (when editing, exclude this row from usage totals)
-		const ent = getEntitlement(leaveYearNum);
-		let usedAnnual = 0, usedCasualDays = 0;
+		// Check balance per leave year (when editing, exclude this row from usage totals)
+		const groups = new Map();
+		dates.forEach(d => {
+			const p = findLeavePeriodForDate(d);
+			if (!groups.has(p.from)) groups.set(p.from, { period: p, dates: [] });
+			groups.get(p.from).dates.push(d);
+		});
+		const skipped = [];
 		try {
-			const existing = await fetchEntriesForDate(leaveDate);
-			const excl = isEdit ? editingEntryId : null;
-			const sums = sumUsageFromEntries(existing, excl);
-			usedAnnual = sums.annualUsed;
-			usedCasualDays = sums.casualUsedDays;
+			for (const g of groups.values()) {
+				const existing = await fetchEntriesByRange(g.period.from, g.period.to);
+				if (isRange) {
+					// Don't double-book a day that already has leave logged.
+					const taken = new Set(existing.map(e => e.date));
+					g.dates = g.dates.filter(d => taken.has(d) ? (skipped.push(d), false) : true);
+				}
+				g.sums = sumUsageFromEntries(existing, isEdit ? editingEntryId : null);
+			}
 		} catch(err) {
 			showToast('Could not verify balance: ' + err.message, true);
 			return;
 		}
-
-		if (type === 'annual' && fullOrHalf !== 'covered') {
-			const adding = fullOrHalf === 'full' ? 1 : 0.5;
-			if (usedAnnual + adding > ent.annual) {
-				showToast('Annual leave: only ' + Math.max(0, ent.annual - usedAnnual) + ' days remaining.', true);
-				return;
-			}
+		dates = dates.filter(d => !skipped.includes(d));
+		if (!dates.length) {
+			showToast('Leave is already logged for every day in that range.', true);
+			return;
 		}
-		if (type === 'casual' && fullOrHalf !== 'covered') {
-			const addDays = fullOrHalf === 'full' ? 1 : 0.5;
-			if (usedCasualDays + addDays > ent.casualDays + 1e-9) {
-				showToast('Casual leave: only ' + fmtDayAmount(Math.max(0, ent.casualDays - usedCasualDays)) + ' days remaining.', true);
-				return;
+
+		if (fullOrHalf !== 'covered') {
+			const unit = fullOrHalf === 'full' ? 1 : 0.5;
+			for (const g of groups.values()) {
+				const adding = unit * g.dates.length;
+				const ent = getEntitlement(g.period.leaveYearNum);
+				const yearNote = groups.size > 1 ? ' in leave year ' + g.period.from + ' – ' + g.period.to : '';
+				if (type === 'annual' && g.sums.annualUsed + adding > ent.annual) {
+					showToast('Annual leave: only ' + Math.max(0, ent.annual - g.sums.annualUsed) + ' days remaining' + yearNote + '.', true);
+					return;
+				}
+				if (type === 'casual' && g.sums.casualUsedDays + adding > ent.casualDays + 1e-9) {
+					showToast('Casual leave: only ' + fmtDayAmount(Math.max(0, ent.casualDays - g.sums.casualUsedDays)) + ' days remaining' + yearNote + '.', true);
+					return;
+				}
 			}
 		}
 
@@ -2167,21 +2224,25 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				statusMsg.style.color = '#0a5f0a';
 				showToast('Leave entry updated ✓');
 			} else {
-				await insertEntry({
-					id: 'id_' + Date.now() + '_' + Math.random().toString(36).slice(2,7),
+				const joinDate = fmtIsoLocal(getLeaveSubjectJoinDate());
+				const entries = dates.map((d, i) => ({
+					id: 'id_' + Date.now() + '_' + i + Math.random().toString(36).slice(2,7),
 					user_id: subjectId,
 					type: type,
-					date: leaveDate,
+					date: d,
 					full_or_half: fullOrHalf,
 					notes: notes,
-					join_date: fmtIsoLocal(getLeaveSubjectJoinDate())
-				});
+					join_date: joinDate
+				}));
+				if (entries.length === 1) await insertEntry(entries[0]);
+				else await insertEntries(entries);
 				document.getElementById('leaveForm').reset();
 				statusMsg.textContent = 'Saved ✓';
 				statusMsg.style.color = '#0a5f0a';
-				showToast('Leave entry saved ✓');
+				showToast((entries.length === 1 ? 'Leave entry saved ✓' : entries.length + ' leave entries saved ✓') +
+					(skipped.length ? ' (skipped ' + skipped.length + ' day(s) already logged)' : ''));
 			}
-			ensurePeriodCoversDate(leaveDate);
+			ensurePeriodCoversDate(dates[dates.length - 1]);
 			await refreshTable();
 			setTimeout(() => openAddLeaveModal(false), isEdit ? 400 : 600);
 		} catch(err) {
