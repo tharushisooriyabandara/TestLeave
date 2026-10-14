@@ -1749,13 +1749,13 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		subjectStudyLeave = {
 			enabled: !!(profile && Number(profile.study_leave_enabled))
 		};
-		const box = document.getElementById('studyBalanceBox');
-		if (box) box.style.display = subjectStudyLeave.enabled ? '' : 'none';
+		// Offer the Study Leave type only once some leave year has study days set.
+		const offer = subjectStudyLeave.enabled && getLeaveYearPeriods().some(p => Number(p.studyDays) > 0);
 		const opt = document.getElementById('leaveTypeStudyOpt');
 		if (opt) {
-			opt.hidden = opt.disabled = !subjectStudyLeave.enabled;
+			opt.hidden = opt.disabled = !offer;
 			const sel = document.getElementById('leaveType');
-			if (!subjectStudyLeave.enabled && sel.value === 'study') sel.value = 'casual';
+			if (!offer && sel.value === 'study') sel.value = 'casual';
 		}
 	}
 
@@ -2020,6 +2020,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		document.getElementById('studyEntitle').textContent = fmtDayAmount(ent.studyDays);
 		document.getElementById('studyUsed').textContent = fmtDayAmount(studyUsedDays);
 		document.getElementById('studyRemain').textContent = fmtDayAmount(Math.max(0, ent.studyDays - studyUsedDays));
+		// Show the Study Leave box only for a leave year with study days (or study leave already taken).
+		document.getElementById('studyBalanceBox').style.display =
+			subjectStudyLeave.enabled && (ent.studyDays > 0 || studyUsedDays > 0) ? '' : 'none';
 	}
 
 	// ── Edit mode ──────────────────────────────────────────────────
