@@ -1,4 +1,5 @@
-// Adds study leave to an existing database: two profile columns, and 'study' as a leave type.
+// Adds study leave to an existing database: the per-profile on/off column, and 'study' as a leave type.
+// Study days per leave year live in leave_profiles.leave_entitlements ("study" on each year).
 // Run:  npm run migrate-study-leave    (safe to re-run)
 
 const mysql = require('mysql2/promise');
@@ -15,10 +16,6 @@ const dbConfig = require('../db-config');
 		if (!have.has('study_leave_enabled')) {
 			await db.query('ALTER TABLE leave_profiles ADD COLUMN study_leave_enabled TINYINT(1) NOT NULL DEFAULT 0');
 			console.log('Added leave_profiles.study_leave_enabled');
-		}
-		if (!have.has('study_leave_days')) {
-			await db.query('ALTER TABLE leave_profiles ADD COLUMN study_leave_days DECIMAL(5,1) NOT NULL DEFAULT 0');
-			console.log('Added leave_profiles.study_leave_days');
 		}
 
 		// Widen the leave type check so 'study' entries can be saved.

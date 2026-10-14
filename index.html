@@ -188,7 +188,7 @@
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Join date</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Role</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">PIN</th>
-						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);" title="Tick to enable study leave; days are per leave year">Study leave</th>
+						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);" title="Tick to enable study leave; set the days under Leave years">Study leave</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Actions</th>
 					</tr>
 				</thead>
@@ -246,6 +246,7 @@
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">To</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Annual</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Casual</th>
+						<th class="leave-ent-study" style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Study</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Actions</th>
 					</tr>
 				</thead>
@@ -270,6 +271,10 @@
 		<div class="form-row">
 			<label for="leaveEntCasual">Casual leave (days)</label>
 			<input type="number" id="leaveEntCasual" min="0" step="0.5" value="6">
+		</div>
+		<div class="form-row leave-ent-study">
+			<label for="leaveEntStudy">Study leave (days)</label>
+			<input type="number" id="leaveEntStudy" min="0" step="0.5" value="0">
 		</div>
 		<div class="modal-actions">
 			<button type="button" class="btn btn-primary" id="leaveEntSaveBtn">Save year</button>
@@ -897,7 +902,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				from: String(x.from).slice(0, 10),
 				to: String(x.to).slice(0, 10),
 				annual: Math.max(0, Number(x.annual) || 0),
-				casual: Math.max(0, Number(x.casual != null ? x.casual : x.casualDays) || 0)
+				casual: Math.max(0, Number(x.casual != null ? x.casual : x.casualDays) || 0),
+				study: Math.max(0, Number(x.study) || 0)
 			}))
 			.sort((a, b) => a.from.localeCompare(b.from));
 	}
@@ -945,14 +951,16 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		document.getElementById('leaveEntTo').value = toIso || '';
 		document.getElementById('leaveEntAnnual').value = def.annual;
 		document.getElementById('leaveEntCasual').value = def.casualDays;
+		document.getElementById('leaveEntStudy').value = list.length ? list[list.length - 1].study : 0;
 	}
 
 	function renderLeaveYearsTable(list) {
 		const tbody = document.getElementById('leaveYearsTableBody');
 		if (!tbody) return;
 		leaveEntCachedList = parseLeaveEntitlements(list);
+		showLeaveEntStudyFields();
 		if (!leaveEntCachedList.length) {
-			tbody.innerHTML = '<tr><td colspan="6" class="sub" style="padding:0.5rem;">No leave years yet — add the first one below.</td></tr>';
+			tbody.innerHTML = '<tr><td colspan="7" class="sub" style="padding:0.5rem;">No leave years yet — add the first one below.</td></tr>';
 			return;
 		}
 		tbody.innerHTML = leaveEntCachedList.map((item, idx) =>
@@ -962,11 +970,13 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(item.to) + '</td>' +
 			'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(fmtDayAmount(item.annual)) + '</td>' +
 			'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(fmtDayAmount(item.casual)) + '</td>' +
+			'<td class="leave-ent-study" style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(fmtDayAmount(item.study)) + '</td>' +
 			'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;">' +
 			'<button type="button" class="btn-edit leave-year-edit-btn" data-from="' + escHtml(item.from) + '">Edit</button> ' +
 			'<button type="button" class="btn-danger leave-year-delete-btn" data-from="' + escHtml(item.from) + '">Delete</button>' +
 			'</td></tr>'
 		).join('');
+		showLeaveEntStudyFields();
 		tbody.querySelectorAll('.leave-year-edit-btn').forEach(btn => {
 			btn.onclick = () => startEditLeaveYear(btn.getAttribute('data-from'));
 		});
@@ -986,6 +996,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		document.getElementById('leaveEntTo').value = item.to;
 		document.getElementById('leaveEntAnnual').value = item.annual;
 		document.getElementById('leaveEntCasual').value = item.casual;
+		document.getElementById('leaveEntStudy').value = item.study;
 		document.getElementById('leaveEntFrom').scrollIntoView({ behavior: 'smooth', block: 'nearest' });
 	}
 
@@ -1037,7 +1048,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				from: last.from,
 				to: last.to,
 				annual: last.annual,
-				casualDays: last.casual
+				casualDays: last.casual,
+				studyDays: last.study
 			};
 		}
 		const today = fmtIsoLocal(new Date());
@@ -1062,6 +1074,15 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		refreshLeaveYearsModalView(profile);
 	}
 
+	/** Study days are only shown/edited in Leave years for people with study leave turned on. */
+	let leaveEntStudyEnabled = false;
+
+	function showLeaveEntStudyFields() {
+		document.querySelectorAll('#manageLeaveYearsModal .leave-ent-study').forEach(el => {
+			el.style.display = leaveEntStudyEnabled ? '' : 'none';
+		});
+	}
+
 	function openManageLeaveYearsModal(open, profileId, displayName) {
 		const targetId = profileId ? String(profileId).trim() : getLeaveSubjectUserId();
 		if (open && !canEditLeaveEntitlementsFor(targetId)) {
@@ -1082,6 +1103,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					document.getElementById('manageLeaveYearsForName').textContent = profile.name;
 				}
 				document.getElementById('leaveEntEditFromKey').value = '';
+				leaveEntStudyEnabled = !!(profile && Number(profile.study_leave_enabled));
 				refreshLeaveYearsModalView(profile);
 			}).catch(err => {
 				showToast('Could not load leave years: ' + err.message, true);
@@ -1092,6 +1114,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			leaveEntManageProfileId = null;
 			leaveEntManageProfileName = '';
 			leaveEntCachedList = [];
+			leaveEntStudyEnabled = false;
 			document.getElementById('leaveEntEditFromKey').value = '';
 		}
 	}
@@ -1106,6 +1129,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const to = document.getElementById('leaveEntTo').value.trim();
 		const annual = Number(document.getElementById('leaveEntAnnual').value);
 		const casual = Number(document.getElementById('leaveEntCasual').value);
+		const study = Number(document.getElementById('leaveEntStudy').value);
 		const editKey = document.getElementById('leaveEntEditFromKey').value.trim();
 		if (from.length < 10 || to.length < 10) {
 			showToast('Enter both From and To dates.', true);
@@ -1119,7 +1143,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			from: from.slice(0, 10),
 			to: to.slice(0, 10),
 			annual: Math.max(0, Number.isNaN(annual) ? 0 : annual),
-			casual: Math.max(0, Number.isNaN(casual) ? 0 : casual)
+			casual: Math.max(0, Number.isNaN(casual) ? 0 : casual),
+			study: Math.max(0, Number.isNaN(study) ? 0 : study)
 		};
 		try {
 			let list = leaveEntCachedList.slice();
@@ -1140,8 +1165,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 
 	function getDefaultPolicyEntitlement(leaveYearNum) {
 		const n = parseInt(leaveYearNum, 10);
-		if (Number.isNaN(n) || n <= 2) return { annual: 0, casualDays: 6 };
-		return { annual: 10, casualDays: 7 };
+		if (Number.isNaN(n) || n <= 2) return { annual: 0, casualDays: 6, studyDays: 0 };
+		return { annual: 10, casualDays: 7, studyDays: 0 };
 	}
 
 	function applyProfileSession(profile) {
@@ -1292,9 +1317,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;font-weight:600;">' + pinCell + '</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;" data-id="' + escHtml(p.id) + '">' +
 					'<label style="display:inline-flex;align-items:center;gap:0.3rem;"><input type="checkbox" class="admin-study-enable"' +
-					(Number(p.study_leave_enabled) ? ' checked' : '') + '> On</label> ' +
-					'<input type="number" class="admin-study-days" min="0" step="0.5" style="width:4.5rem;" title="Study days per leave year"' +
-					' value="' + escHtml(fmtDayAmount(p.study_leave_days || 0)) + '"' + (Number(p.study_leave_enabled) ? '' : ' disabled') + '> days' +
+					(Number(p.study_leave_enabled) ? ' checked' : '') + '> On</label>' +
 					'</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;">' +
 					'<button type="button" class="btn-edit admin-manage-leave-years-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Leave years</button> ' +
@@ -1320,7 +1343,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					openManageCareerModal(true, id, name);
 				};
 			});
-			tbody.querySelectorAll('.admin-study-enable, .admin-study-days').forEach(inp => {
+			tbody.querySelectorAll('.admin-study-enable').forEach(inp => {
 				inp.onchange = () => saveStudyLeaveSetting(inp.closest('td'));
 			});
 			tbody.querySelectorAll('.admin-reset-pin-btn').forEach(btn => {
@@ -1335,22 +1358,14 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		}
 	}
 
-	/** Saves one row's study leave tick + days (Manage users table). */
+	/** Saves one row's study leave tick (Manage users table). Days are set per year under Leave years. */
 	async function saveStudyLeaveSetting(cell) {
 		if (!isAdmin()) return;
 		const profileId = cell.getAttribute('data-id');
-		const enableInp = cell.querySelector('.admin-study-enable');
-		const daysInp = cell.querySelector('.admin-study-days');
-		const enabled = enableInp.checked;
-		let days = Number(daysInp.value);
-		if (Number.isNaN(days) || days < 0) days = 0;
-		days = Math.round(days * 2) / 2;
-		daysInp.value = fmtDayAmount(days);
-		daysInp.disabled = !enabled;
-		if (enabled && !days) daysInp.focus();
+		const enabled = cell.querySelector('.admin-study-enable').checked;
 		try {
-			await patchProfileById(profileId, { study_leave_enabled: enabled ? 1 : 0, study_leave_days: days });
-			showToast('Study leave ' + (enabled ? 'on (' + fmtDayAmount(days) + ' days per leave year)' : 'off') + ' ✓');
+			await patchProfileById(profileId, { study_leave_enabled: enabled ? 1 : 0 });
+			showToast(enabled ? 'Study leave on ✓ Set the days for each year under Leave years.' : 'Study leave off ✓');
 			if (profileId === getLeaveSubjectUserId()) {
 				await refreshCareerSidebar();
 				await refreshTable();
@@ -1728,12 +1743,11 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 	/** Custom leave year periods + day counts set by employee or admin. */
 	let subjectLeaveEntitlementsCache = null;
 	/** Study leave for the leave subject: off unless an admin enabled it on their profile. */
-	let subjectStudyLeave = { enabled: false, days: 0 };
+	let subjectStudyLeave = { enabled: false };
 
 	function setSubjectStudyLeave(profile) {
 		subjectStudyLeave = {
-			enabled: !!(profile && Number(profile.study_leave_enabled)),
-			days: Math.max(0, Number(profile && profile.study_leave_days) || 0)
+			enabled: !!(profile && Number(profile.study_leave_enabled))
 		};
 		const box = document.getElementById('studyBalanceBox');
 		if (box) box.style.display = subjectStudyLeave.enabled ? '' : 'none';
@@ -1753,7 +1767,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			from: e.from,
 			to: e.to,
 			annual: e.annual,
-			casualDays: e.casual
+			casualDays: e.casual,
+			studyDays: e.study
 		}));
 	}
 
@@ -1901,15 +1916,15 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 	function getEntitlement(leaveYearNum) {
 		const p = getLeaveYearPeriods().find(x => x.leaveYearNum === parseInt(leaveYearNum, 10));
 		if (p && p.annual != null && p.casualDays != null) {
-			return { annual: Number(p.annual), casualDays: Number(p.casualDays) };
+			return { annual: Number(p.annual), casualDays: Number(p.casualDays), studyDays: Number(p.studyDays) || 0 };
 		}
 		return getDefaultPolicyEntitlement(leaveYearNum);
 	}
 	function getEntitlementForDate(dateStr) {
 		const p = findLeavePeriodForDate(dateStr);
-		if (!p) return { annual: 0, casualDays: 6 };
+		if (!p) return { annual: 0, casualDays: 6, studyDays: 0 };
 		if (p.annual != null && p.casualDays != null) {
-			return { annual: Number(p.annual), casualDays: Number(p.casualDays) };
+			return { annual: Number(p.annual), casualDays: Number(p.casualDays), studyDays: Number(p.studyDays) || 0 };
 		}
 		return getEntitlement(p.leaveYearNum);
 	}
@@ -2002,9 +2017,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		document.getElementById('casualEntitle').textContent = fmtDayAmount(ent.casualDays);
 		document.getElementById('casualUsed').textContent = fmtDayAmount(casualUsedDays);
 		document.getElementById('casualRemain').textContent = fmtDayAmount(Math.max(0, ent.casualDays - casualUsedDays));
-		document.getElementById('studyEntitle').textContent = fmtDayAmount(subjectStudyLeave.days);
+		document.getElementById('studyEntitle').textContent = fmtDayAmount(ent.studyDays);
 		document.getElementById('studyUsed').textContent = fmtDayAmount(studyUsedDays);
-		document.getElementById('studyRemain').textContent = fmtDayAmount(Math.max(0, subjectStudyLeave.days - studyUsedDays));
+		document.getElementById('studyRemain').textContent = fmtDayAmount(Math.max(0, ent.studyDays - studyUsedDays));
 	}
 
 	// ── Edit mode ──────────────────────────────────────────────────
@@ -2269,8 +2284,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					showToast('Casual leave: only ' + fmtDayAmount(Math.max(0, ent.casualDays - g.sums.casualUsedDays)) + ' days remaining' + yearNote + '.', true);
 					return;
 				}
-				if (type === 'study' && g.sums.studyUsedDays + adding > subjectStudyLeave.days + 1e-9) {
-					showToast('Study leave: only ' + fmtDayAmount(Math.max(0, subjectStudyLeave.days - g.sums.studyUsedDays)) + ' days remaining' + yearNote + '.', true);
+				if (type === 'study' && g.sums.studyUsedDays + adding > ent.studyDays + 1e-9) {
+					showToast('Study leave: only ' + fmtDayAmount(Math.max(0, ent.studyDays - g.sums.studyUsedDays)) + ' days remaining' + yearNote + '.', true);
 					return;
 				}
 			}
