@@ -290,8 +290,8 @@
 			<div class="form-row">
 				<label for="leaveType">Leave type</label>
 				<select id="leaveType" required>
-					<option value="annual">Annual Leave</option>
-					<option value="casual" selected>Casual Leave</option>
+					<option value="annual" id="leaveTypeAnnualOpt">Annual Leave</option>
+					<option value="casual" id="leaveTypeCasualOpt" selected>Casual Leave</option>
 					<option value="study" id="leaveTypeStudyOpt" hidden disabled>Study Leave</option>
 				</select>
 			</div>
@@ -379,8 +379,9 @@
 					<select id="periodLeaveYearSelect"></select>
 				</span>
 			</p>
+			<p id="noLeaveAllocatedMsg" class="sub" style="display:none;">No leave allocated for this leave year.</p>
 			<div class="balance-grid">
-				<div class="balance-box">
+				<div class="balance-box" id="annualBalanceBox">
 					<h3>Annual Leave</h3>
 					<div class="balance-total">Total: <span id="annualEntitle">—</span> days</div>
 					<div class="balance-box-inner">
@@ -388,7 +389,7 @@
 						<div class="balance-cell remain"><div class="label">Remain</div><div class="value" id="annualRemain">—</div></div>
 					</div>
 				</div>
-				<div class="balance-box">
+				<div class="balance-box" id="casualBalanceBox">
 					<h3>Casual Leave</h3>
 					<div class="balance-total">Total: <span id="casualEntitle">—</span> days</div>
 					<div class="balance-box-inner">
@@ -725,7 +726,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			renderCareerTimelineList(profile ? profile.career_timeline : null, profile ? profile.leave_entitlements : null);
 			subjectCareerTimelineCache = profile ? profile.career_timeline : null;
 			subjectLeaveEntitlementsCache = profile ? profile.leave_entitlements : null;
-			updateStudyLeaveOption();
+			updateLeaveTypeOptions();
 			if (banner) {
 				if (isAdmin() && subjectId !== signedInId) {
 					banner.style.display = 'block';
@@ -743,7 +744,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			renderCareerTimelineList(null, null);
 			subjectCareerTimelineCache = null;
 			subjectLeaveEntitlementsCache = null;
-			updateStudyLeaveOption();
+			updateLeaveTypeOptions();
 			if (nameEl) nameEl.textContent = getLeaveSubjectDisplayName();
 			showToast('Could not load profile timeline: ' + err.message, true);
 		}
@@ -1613,6 +1614,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			document.getElementById('leaveForm').reset();
 			clearEditMode();
 		}
+		if (open) updateLeaveTypeOptions();
 	}
 
 	function onLeaveManageUserChange() {
@@ -1704,14 +1706,27 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 	let subjectCareerTimelineCache = null;
 	/** Custom leave year periods + day counts set by employee or admin. */
 	let subjectLeaveEntitlementsCache = null;
-	function updateStudyLeaveOption() {
-		// Offer the Study Leave type only once some leave year has study days set.
-		const offer = getLeaveYearPeriods().some(p => Number(p.studyDays) > 0);
-		const opt = document.getElementById('leaveTypeStudyOpt');
-		if (opt) {
-			opt.hidden = opt.disabled = !offer;
-			const sel = document.getElementById('leaveType');
-			if (!offer && sel.value === 'study') sel.value = 'casual';
+	/**
+	 * Add leave: offer only the leave types the chosen date's leave year has days for
+	 * (today's year until a date is picked). When editing, the entry's own type stays.
+	 */
+	function updateLeaveTypeOptions() {
+		const sel = document.getElementById('leaveType');
+		const date = document.getElementById('leaveDate').value || fmtIsoLocal(new Date());
+		const ent = getEntitlementForDate(date);
+		const keep = editingEntryId ? sel.value : null;
+		const offer = {
+			annual: ent.annual > 0 || keep === 'annual',
+			casual: ent.casualDays > 0 || keep === 'casual',
+			study: ent.studyDays > 0 || keep === 'study'
+		};
+		[['annual', 'leaveTypeAnnualOpt'], ['casual', 'leaveTypeCasualOpt'], ['study', 'leaveTypeStudyOpt']].forEach(([type, id]) => {
+			const opt = document.getElementById(id);
+			opt.hidden = opt.disabled = !offer[type];
+		});
+		if (!offer[sel.value]) {
+			const first = ['casual', 'annual', 'study'].find(t => offer[t]);
+			if (first) sel.value = first;
 		}
 	}
 
@@ -1976,9 +1991,14 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		document.getElementById('studyEntitle').textContent = fmtDayAmount(ent.studyDays);
 		document.getElementById('studyUsed').textContent = fmtDayAmount(studyUsedDays);
 		document.getElementById('studyRemain').textContent = fmtDayAmount(Math.max(0, ent.studyDays - studyUsedDays));
-		// Show the Study Leave box only for a leave year with study days (or study leave already taken).
-		document.getElementById('studyBalanceBox').style.display =
-			ent.studyDays > 0 || studyUsedDays > 0 ? '' : 'none';
+		// Show only the leave types this year has days for (or that were already taken).
+		const shown = [
+			['annualBalanceBox', ent.annual > 0 || annualUsed > 0],
+			['casualBalanceBox', ent.casualDays > 0 || casualUsedDays > 0],
+			['studyBalanceBox', ent.studyDays > 0 || studyUsedDays > 0]
+		];
+		shown.forEach(([id, show]) => { document.getElementById(id).style.display = show ? '' : 'none'; });
+		document.getElementById('noLeaveAllocatedMsg').style.display = shown.some(x => x[1]) ? 'none' : '';
 	}
 
 	// ── Edit mode ──────────────────────────────────────────────────
@@ -2346,6 +2366,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		});
 
 		document.getElementById('leaveManageUserSelect').addEventListener('change', onLeaveManageUserChange);
+		document.getElementById('leaveDate').addEventListener('change', updateLeaveTypeOptions);
 
 		document.getElementById('addLeaveModal').addEventListener('click', function(ev) {
 			if (ev.target === this) openAddLeaveModal(false);
