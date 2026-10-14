@@ -10,7 +10,8 @@ const pool = mysql.createPool(dbConfig({
 }));
 
 // Columns a client may write. Anything else in a request body is ignored.
-const PROFILE_FIELDS = ['id', 'name', 'pin', 'join_date', 'role', 'career_timeline', 'leave_entitlements'];
+const PROFILE_FIELDS = ['id', 'name', 'pin', 'join_date', 'role', 'career_timeline', 'leave_entitlements',
+	'study_leave_enabled', 'study_leave_days'];
 const ENTRY_FIELDS = ['id', 'user_id', 'type', 'date', 'full_or_half', 'notes', 'join_date'];
 const JSON_FIELDS = new Set(['career_timeline', 'leave_entitlements']);
 
@@ -47,13 +48,14 @@ app.post('/api/login', async (req, res) => {
 
 app.get('/api/profiles', async (req, res) => {
 	const [rows] = await pool.query(
-		'SELECT id, name, join_date, role, pin FROM leave_profiles ORDER BY name');
+		'SELECT id, name, join_date, role, pin, study_leave_enabled, study_leave_days FROM leave_profiles ORDER BY name');
 	res.json(rows);
 });
 
 app.get('/api/profiles/:id', async (req, res) => {
 	const [rows] = await pool.query(
-		'SELECT id, name, join_date, role, career_timeline, leave_entitlements FROM leave_profiles WHERE id = ?',
+		'SELECT id, name, join_date, role, career_timeline, leave_entitlements, study_leave_enabled, study_leave_days ' +
+		'FROM leave_profiles WHERE id = ?',
 		[req.params.id]);
 	const p = rows[0];
 	if (!p) return res.json(null);

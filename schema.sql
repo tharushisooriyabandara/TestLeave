@@ -15,6 +15,8 @@ CREATE TABLE IF NOT EXISTS leave_profiles (
 	role               VARCHAR(10)  NOT NULL DEFAULT 'user',
 	career_timeline    JSON         NULL,                -- [{"title","from","to"|null}]
 	leave_entitlements JSON         NULL,                -- [{"from","to","annual","casual"}]
+	study_leave_enabled TINYINT(1)  NOT NULL DEFAULT 0,  -- admin turns study leave on per employee
+	study_leave_days   DECIMAL(5,1) NOT NULL DEFAULT 0,  -- study days allowed per leave year
 	created_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id),
 	UNIQUE KEY leave_profiles_pin_uq (pin),
@@ -37,7 +39,7 @@ CREATE TABLE IF NOT EXISTS leave_entries (
 	KEY leave_entries_user_date_idx (user_id, `date`),
 	CONSTRAINT leave_entries_user_fk FOREIGN KEY (user_id)
 		REFERENCES leave_profiles (id) ON DELETE CASCADE,
-	CONSTRAINT leave_entries_type_chk CHECK (type IN ('annual', 'casual')),
+	CONSTRAINT leave_entries_type_chk CHECK (type IN ('annual', 'casual', 'study')),
 	CONSTRAINT leave_entries_full_or_half_chk CHECK (full_or_half IN ('full', 'half', 'covered'))
 ) ENGINE=InnoDB;
 
