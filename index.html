@@ -173,7 +173,7 @@
 <div id="adminUsersModal" class="modal-overlay" aria-hidden="true">
 	<div class="modal-card modal-wide">
 		<h3>All users</h3>
-		<p class="sub" style="margin-top:-0.5rem;">Add users, manage career timelines, enable study leave, reset PINs, or remove users.</p>
+		<p class="sub" style="margin-top:-0.5rem;">Add users, manage career timelines, reset PINs, or remove users.</p>
 		<p style="margin-bottom:0.75rem;display:flex;flex-wrap:wrap;gap:0.5rem;align-items:center;">
 			<button type="button" class="btn btn-primary" id="adminAddUserBtn">Add user</button>
 			<button type="button" class="btn btn-primary" id="adminUsersRefreshBtn">Refresh</button>
@@ -188,7 +188,6 @@
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Join date</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Role</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">PIN</th>
-						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);" title="Tick to enable study leave; set the days under Leave years">Study leave</th>
 						<th style="text-align:left;padding:0.5rem;border-bottom:1px solid var(--border);">Actions</th>
 					</tr>
 				</thead>
@@ -726,7 +725,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			renderCareerTimelineList(profile ? profile.career_timeline : null, profile ? profile.leave_entitlements : null);
 			subjectCareerTimelineCache = profile ? profile.career_timeline : null;
 			subjectLeaveEntitlementsCache = profile ? profile.leave_entitlements : null;
-			setSubjectStudyLeave(profile);
+			updateStudyLeaveOption();
 			if (banner) {
 				if (isAdmin() && subjectId !== signedInId) {
 					banner.style.display = 'block';
@@ -744,7 +743,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			renderCareerTimelineList(null, null);
 			subjectCareerTimelineCache = null;
 			subjectLeaveEntitlementsCache = null;
-			setSubjectStudyLeave(null);
+			updateStudyLeaveOption();
 			if (nameEl) nameEl.textContent = getLeaveSubjectDisplayName();
 			showToast('Could not load profile timeline: ' + err.message, true);
 		}
@@ -958,7 +957,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const tbody = document.getElementById('leaveYearsTableBody');
 		if (!tbody) return;
 		leaveEntCachedList = parseLeaveEntitlements(list);
-		showLeaveEntStudyFields();
 		if (!leaveEntCachedList.length) {
 			tbody.innerHTML = '<tr><td colspan="7" class="sub" style="padding:0.5rem;">No leave years yet — add the first one below.</td></tr>';
 			return;
@@ -976,7 +974,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			'<button type="button" class="btn-danger leave-year-delete-btn" data-from="' + escHtml(item.from) + '">Delete</button>' +
 			'</td></tr>'
 		).join('');
-		showLeaveEntStudyFields();
 		tbody.querySelectorAll('.leave-year-edit-btn').forEach(btn => {
 			btn.onclick = () => startEditLeaveYear(btn.getAttribute('data-from'));
 		});
@@ -1074,15 +1071,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		refreshLeaveYearsModalView(profile);
 	}
 
-	/** Study days are only shown/edited in Leave years for people with study leave turned on. */
-	let leaveEntStudyEnabled = false;
-
-	function showLeaveEntStudyFields() {
-		document.querySelectorAll('#manageLeaveYearsModal .leave-ent-study').forEach(el => {
-			el.style.display = leaveEntStudyEnabled ? '' : 'none';
-		});
-	}
-
 	function openManageLeaveYearsModal(open, profileId, displayName) {
 		const targetId = profileId ? String(profileId).trim() : getLeaveSubjectUserId();
 		if (open && !canEditLeaveEntitlementsFor(targetId)) {
@@ -1103,7 +1091,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					document.getElementById('manageLeaveYearsForName').textContent = profile.name;
 				}
 				document.getElementById('leaveEntEditFromKey').value = '';
-				leaveEntStudyEnabled = !!(profile && Number(profile.study_leave_enabled));
 				refreshLeaveYearsModalView(profile);
 			}).catch(err => {
 				showToast('Could not load leave years: ' + err.message, true);
@@ -1114,7 +1101,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			leaveEntManageProfileId = null;
 			leaveEntManageProfileName = '';
 			leaveEntCachedList = [];
-			leaveEntStudyEnabled = false;
 			document.getElementById('leaveEntEditFromKey').value = '';
 		}
 	}
@@ -1297,11 +1283,11 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 	async function refreshAdminUsersList() {
 		const tbody = document.getElementById('adminUsersTableBody');
 		if (!tbody) return;
-		tbody.innerHTML = '<tr><td colspan="7" class="sub">Loading…</td></tr>';
+		tbody.innerHTML = '<tr><td colspan="6" class="sub">Loading…</td></tr>';
 		try {
 			const list = await fetchAllProfiles();
 			if (list.length === 0) {
-				tbody.innerHTML = '<tr><td colspan="7" class="sub">No profiles yet.</td></tr>';
+				tbody.innerHTML = '<tr><td colspan="6" class="sub">No profiles yet.</td></tr>';
 				return;
 			}
 			list.sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), undefined, { sensitivity: 'base' }));
@@ -1315,10 +1301,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(jd) + '</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;">' + escHtml(p.role || 'user') + '</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;font-weight:600;">' + pinCell + '</td>' +
-					'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;" data-id="' + escHtml(p.id) + '">' +
-					'<label style="display:inline-flex;align-items:center;gap:0.3rem;"><input type="checkbox" class="admin-study-enable"' +
-					(Number(p.study_leave_enabled) ? ' checked' : '') + '> On</label>' +
-					'</td>' +
 					'<td style="padding:0.45rem;border-bottom:1px solid #eee;white-space:nowrap;">' +
 					'<button type="button" class="btn-edit admin-manage-leave-years-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Leave years</button> ' +
 					'<button type="button" class="btn-edit admin-manage-career-btn" data-id="' + escHtml(p.id) + '" data-name="' + escHtml(p.name) + '">Career</button> ' +
@@ -1343,9 +1325,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					openManageCareerModal(true, id, name);
 				};
 			});
-			tbody.querySelectorAll('.admin-study-enable').forEach(inp => {
-				inp.onchange = () => saveStudyLeaveSetting(inp.closest('td'));
-			});
 			tbody.querySelectorAll('.admin-reset-pin-btn').forEach(btn => {
 				btn.onclick = () => openAdminResetPinModal(true, btn.getAttribute('data-id'), btn.getAttribute('data-name'));
 			});
@@ -1353,25 +1332,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				btn.onclick = () => removeUserAsAdmin(btn.getAttribute('data-id'), btn.getAttribute('data-name'));
 			});
 		} catch (err) {
-			tbody.innerHTML = '<tr><td colspan="7" class="sub">Could not load users: ' + escHtml(err.message) + '</td></tr>';
+			tbody.innerHTML = '<tr><td colspan="6" class="sub">Could not load users: ' + escHtml(err.message) + '</td></tr>';
 			showToast('Load users failed: ' + err.message, true);
-		}
-	}
-
-	/** Saves one row's study leave tick (Manage users table). Days are set per year under Leave years. */
-	async function saveStudyLeaveSetting(cell) {
-		if (!isAdmin()) return;
-		const profileId = cell.getAttribute('data-id');
-		const enabled = cell.querySelector('.admin-study-enable').checked;
-		try {
-			await patchProfileById(profileId, { study_leave_enabled: enabled ? 1 : 0 });
-			showToast(enabled ? 'Study leave on ✓ Set the days for each year under Leave years.' : 'Study leave off ✓');
-			if (profileId === getLeaveSubjectUserId()) {
-				await refreshCareerSidebar();
-				await refreshTable();
-			}
-		} catch (err) {
-			showToast('Could not save study leave: ' + err.message, true);
 		}
 	}
 
@@ -1742,15 +1704,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 	let subjectCareerTimelineCache = null;
 	/** Custom leave year periods + day counts set by employee or admin. */
 	let subjectLeaveEntitlementsCache = null;
-	/** Study leave for the leave subject: off unless an admin enabled it on their profile. */
-	let subjectStudyLeave = { enabled: false };
-
-	function setSubjectStudyLeave(profile) {
-		subjectStudyLeave = {
-			enabled: !!(profile && Number(profile.study_leave_enabled))
-		};
+	function updateStudyLeaveOption() {
 		// Offer the Study Leave type only once some leave year has study days set.
-		const offer = subjectStudyLeave.enabled && getLeaveYearPeriods().some(p => Number(p.studyDays) > 0);
+		const offer = getLeaveYearPeriods().some(p => Number(p.studyDays) > 0);
 		const opt = document.getElementById('leaveTypeStudyOpt');
 		if (opt) {
 			opt.hidden = opt.disabled = !offer;
@@ -2022,7 +1978,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		document.getElementById('studyRemain').textContent = fmtDayAmount(Math.max(0, ent.studyDays - studyUsedDays));
 		// Show the Study Leave box only for a leave year with study days (or study leave already taken).
 		document.getElementById('studyBalanceBox').style.display =
-			subjectStudyLeave.enabled && (ent.studyDays > 0 || studyUsedDays > 0) ? '' : 'none';
+			ent.studyDays > 0 || studyUsedDays > 0 ? '' : 'none';
 	}
 
 	// ── Edit mode ──────────────────────────────────────────────────
@@ -2216,11 +2172,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const statusMsg = document.getElementById('statusMsg');
 		const addBtn = document.getElementById('addBtn');
 		const isEdit = !!editingEntryId;
-
-		if (type === 'study' && !subjectStudyLeave.enabled) {
-			showToast('Study leave is not enabled for this person.', true);
-			return;
-		}
 
 		// Adding with a "To" date saves one entry per day in the range.
 		const leaveDateTo = isEdit ? '' : document.getElementById('leaveDateTo').value;

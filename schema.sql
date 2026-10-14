@@ -15,7 +15,6 @@ CREATE TABLE IF NOT EXISTS leave_profiles (
 	role               VARCHAR(10)  NOT NULL DEFAULT 'user',
 	career_timeline    JSON         NULL,                -- [{"title","from","to"|null}]
 	leave_entitlements JSON         NULL,                -- [{"from","to","annual","casual","study"}]
-	study_leave_enabled TINYINT(1)  NOT NULL DEFAULT 0,  -- admin turns study leave on per employee
 	created_at         TIMESTAMP    NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id),
 	UNIQUE KEY leave_profiles_pin_uq (pin),
