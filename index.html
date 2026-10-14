@@ -42,6 +42,8 @@
 		th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
 		tr.has-extra > td { border-bottom: none; }
 		tr.entry-extra-row > td { padding-top: 0; font-size: 0.875rem; color: #555; white-space: pre-wrap; word-break: break-word; }
+		.cover-chip { display: inline-block; margin: 0.15rem 0.35rem 0.15rem 0; padding: 0.1rem 0.55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--primary-light); color: var(--text); white-space: nowrap; }
+		.cover-chip:first-of-type { margin-left: 0.35rem; }
 		.cover-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; }
 		.cover-row input, .cover-row select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; }
 		th { background: var(--primary-light); color: var(--primary); font-weight: 600; }
@@ -1619,7 +1621,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 
 	function fmtCover(c) {
 		const what = c.kind === 'time' ? (c.from || '?') + '–' + (c.to || '?') : COVER_KINDS[c.kind] || 'Full day';
-		return c.date + ' ' + what;
+		const d = parseYmdLocal(c.date);
+		const day = d ? ['Sun', 'Mon', 'Tue', 'Wed', 'Thu', 'Fri', 'Sat'][d.getDay()] + ' ' : '';
+		return day + c.date + ' · ' + what;
 	}
 
 	function addCoverRow(c) {
@@ -2131,7 +2135,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			const note = String(e.extra_note || '').trim();
 			const covers = e.full_or_half === 'covered' ? normalizeCovers(e.cover_details) : [];
 			const extras = [];
-			if (covers.length) extras.push('<strong>Covered by:</strong> ' + esc(covers.map(fmtCover).join(' · ')));
+			if (covers.length) extras.push('<strong>Covered by:</strong> ' +
+				covers.map(c => '<span class="cover-chip">' + esc(fmtCover(c)) + '</span>').join(''));
 			if (note) extras.push('<strong>Note:</strong> ' + esc(note));
 			return '<tr data-id="' + esc(e.id) + '"' + (extras.length ? ' class="has-extra"' : '') +
 				' data-type="' + esc(e.type) + '"' +
