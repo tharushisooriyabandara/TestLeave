@@ -32,6 +32,7 @@ CREATE TABLE IF NOT EXISTS leave_entries (
 	notes        TEXT        NULL,
 	join_date    DATE        NULL,                       -- snapshot of the employee's join date when saved
 	extra_note   TEXT        NULL,                       -- optional note, shown under the entry in the list
+	cover_details JSON       NULL,                       -- covered leave: [{"date","kind":"full"|"half"|"time","from","to"}]
 	created_at   TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id),
 	-- The app always loads entries per user within a date range, newest first.

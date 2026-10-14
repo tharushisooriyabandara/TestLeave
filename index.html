@@ -40,8 +40,10 @@
 		.card-body p { margin: 0.5rem 0; }
 		table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.95rem; }
 		th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
-		tr.has-note > td { border-bottom: none; }
-		tr.entry-note-row > td { padding-top: 0; font-size: 0.875rem; color: #555; white-space: pre-wrap; word-break: break-word; }
+		tr.has-extra > td { border-bottom: none; }
+		tr.entry-extra-row > td { padding-top: 0; font-size: 0.875rem; color: #555; white-space: pre-wrap; word-break: break-word; }
+		.cover-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; }
+		.cover-row input, .cover-row select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; }
 		th { background: var(--primary-light); color: var(--primary); font-weight: 600; }
 		.sub { font-size: 0.9rem; color: #555; }
 		.period-filter-row { margin: 0 0 0.75rem 0; }
@@ -317,6 +319,11 @@
 					<option value="half">Half day</option>
 					<option value="covered">Covered</option>
 				</select>
+			</div>
+			<div class="form-row" id="coverSection" style="display:none;">
+				<label>Covered by <span class="sub" style="font-weight:400;">(days worked to cover this leave)</span></label>
+				<div id="coverRows"></div>
+				<button type="button" class="btn-ghost" id="addCoverRowBtn" style="margin-left:0;">+ Add another cover day</button>
 			</div>
 			<div class="form-row">
 				<label for="notes">Reason for leave</label>
@@ -1601,6 +1608,77 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		}
 	}
 
+	// ── Covered leave: days worked to cover it ─────────────────────
+	const COVER_KINDS = { full: 'Full day', half: 'Half day', time: 'Specific time' };
+
+	function normalizeCovers(raw) {
+		let list = raw;
+		if (typeof raw === 'string') { try { list = JSON.parse(raw); } catch { list = []; } }
+		return (Array.isArray(list) ? list : []).filter(c => c && String(c.date || '').length >= 10);
+	}
+
+	function fmtCover(c) {
+		const what = c.kind === 'time' ? (c.from || '?') + '–' + (c.to || '?') : COVER_KINDS[c.kind] || 'Full day';
+		return c.date + ' ' + what;
+	}
+
+	function addCoverRow(c) {
+		const row = document.createElement('div');
+		row.className = 'cover-row';
+		row.innerHTML =
+			'<input type="date" class="cover-date" aria-label="Cover date">' +
+			'<select class="cover-kind" aria-label="Cover amount">' +
+			Object.entries(COVER_KINDS).map(([v, label]) => '<option value="' + v + '">' + label + '</option>').join('') +
+			'</select>' +
+			'<input type="time" class="cover-from" aria-label="From time"> <span class="cover-time-sep">to</span> ' +
+			'<input type="time" class="cover-to" aria-label="To time">' +
+			'<button type="button" class="btn-danger cover-remove">Remove</button>';
+		row.querySelector('.cover-date').value = c.date || '';
+		row.querySelector('.cover-kind').value = COVER_KINDS[c.kind] ? c.kind : 'full';
+		row.querySelector('.cover-from').value = c.from || '';
+		row.querySelector('.cover-to').value = c.to || '';
+		const syncTime = () => {
+			const show = row.querySelector('.cover-kind').value === 'time';
+			row.querySelectorAll('.cover-from, .cover-to, .cover-time-sep').forEach(el => { el.style.display = show ? '' : 'none'; });
+		};
+		row.querySelector('.cover-kind').onchange = syncTime;
+		row.querySelector('.cover-remove').onclick = () => row.remove();
+		syncTime();
+		document.getElementById('coverRows').appendChild(row);
+	}
+
+	function setCoverRows(list) {
+		document.getElementById('coverRows').innerHTML = '';
+		const covers = normalizeCovers(list);
+		(covers.length ? covers : [{}]).forEach(addCoverRow);
+	}
+
+	function updateCoverSection() {
+		document.getElementById('coverSection').style.display =
+			document.getElementById('fullOrHalf').value === 'covered' ? '' : 'none';
+	}
+
+	/** Cover rows from the form; rows without a date are skipped. Returns null (after a toast) if one is invalid. */
+	function collectCoverRows() {
+		const out = [];
+		for (const row of document.querySelectorAll('#coverRows .cover-row')) {
+			const date = row.querySelector('.cover-date').value;
+			if (!date) continue;
+			const kind = row.querySelector('.cover-kind').value;
+			const c = { date: date, kind: kind };
+			if (kind === 'time') {
+				c.from = row.querySelector('.cover-from').value;
+				c.to = row.querySelector('.cover-to').value;
+				if (!c.from || !c.to || c.to <= c.from) {
+					showToast('Cover on ' + date + ': enter a time range where "to" is after "from".', true);
+					return null;
+				}
+			}
+			out.push(c);
+		}
+		return out.sort((a, b) => a.date.localeCompare(b.date));
+	}
+
 	function openAddLeaveModal(open) {
 		const m = document.getElementById('addLeaveModal');
 		if (!m) return;
@@ -1620,7 +1698,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			document.getElementById('leaveForm').reset();
 			clearEditMode();
 		}
+		if (!open || !editingEntryId) setCoverRows([]);
 		if (open) updateLeaveTypeOptions();
+		updateCoverSection();
 	}
 
 	function onLeaveManageUserChange() {
@@ -2049,12 +2129,17 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			const dayAmt = entryLeaveDaysDisplay(e);
 			const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
 			const note = String(e.extra_note || '').trim();
-			return '<tr data-id="' + esc(e.id) + '"' + (note ? ' class="has-note"' : '') +
+			const covers = e.full_or_half === 'covered' ? normalizeCovers(e.cover_details) : [];
+			const extras = [];
+			if (covers.length) extras.push('<strong>Covered by:</strong> ' + esc(covers.map(fmtCover).join(' · ')));
+			if (note) extras.push('<strong>Note:</strong> ' + esc(note));
+			return '<tr data-id="' + esc(e.id) + '"' + (extras.length ? ' class="has-extra"' : '') +
 				' data-type="' + esc(e.type) + '"' +
 				' data-date="' + esc(e.date) + '"' +
 				' data-full-or-half="' + esc(e.full_or_half) + '"' +
 				' data-notes="' + esc(e.notes || '') + '"' +
-				' data-extra-note="' + esc(note) + '">' +
+				' data-extra-note="' + esc(note) + '"' +
+				' data-covers="' + esc(JSON.stringify(covers)) + '">' +
 				'<td>' + e.date + '</td>' +
 				'<td>' + typeLabel + '</td>' +
 				'<td>' + fullHalf + '</td>' +
@@ -2062,7 +2147,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				'<td style="max-width:220px;word-break:break-word;">' + esc(e.notes || '—') + '</td>' +
 				'<td><button type="button" class="btn-edit edit-btn">Edit</button>' +
 				'<button type="button" class="btn-danger delete-btn">Delete</button></td></tr>' +
-				(note ? '<tr class="entry-note-row"><td colspan="6"><strong>Note:</strong> ' + esc(note) + '</td></tr>' : '');
+				extras.map((html, i) => '<tr class="entry-extra-row' + (i < extras.length - 1 ? ' has-extra' : '') + '">' +
+					'<td colspan="6">' + html + '</td></tr>').join('');
 		}).join('');
 		tbody.querySelectorAll('.edit-btn').forEach(btn => {
 			btn.onclick = () => {
@@ -2073,6 +2159,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				document.getElementById('fullOrHalf').value = tr.getAttribute('data-full-or-half');
 				document.getElementById('notes').value = tr.getAttribute('data-notes') || '';
 				document.getElementById('leaveNote').value = tr.getAttribute('data-extra-note') || '';
+				let covers = [];
+				try { covers = JSON.parse(tr.getAttribute('data-covers') || '[]'); } catch { /* keep empty */ }
+				setCoverRows(covers);
 				document.getElementById('addBtn').textContent = 'Update leave';
 				document.getElementById('addLeaveModalTitle').textContent = 'Edit leave';
 				document.getElementById('cancelEditBtn').textContent = 'Cancel edit';
@@ -2200,6 +2289,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const fullOrHalf = document.getElementById('fullOrHalf').value;
 		const notes = document.getElementById('notes').value.trim();
 		const extraNote = document.getElementById('leaveNote').value.trim();
+		const covers = fullOrHalf === 'covered' ? collectCoverRows() : [];
+		if (covers === null) return;
 		const statusMsg = document.getElementById('statusMsg');
 		const addBtn = document.getElementById('addBtn');
 		const isEdit = !!editingEntryId;
@@ -2288,6 +2379,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					full_or_half: fullOrHalf,
 					notes: notes,
 					extra_note: extraNote,
+					cover_details: covers,
 					join_date: fmtIsoLocal(getLeaveSubjectJoinDate())
 				});
 				document.getElementById('leaveForm').reset();
@@ -2305,6 +2397,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					full_or_half: fullOrHalf,
 					notes: notes,
 					extra_note: extraNote,
+					cover_details: covers,
 					join_date: joinDate
 				}));
 				if (entries.length === 1) await insertEntry(entries[0]);
@@ -2380,6 +2473,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 
 		document.getElementById('leaveManageUserSelect').addEventListener('change', onLeaveManageUserChange);
 		document.getElementById('leaveDate').addEventListener('change', updateLeaveTypeOptions);
+		document.getElementById('fullOrHalf').addEventListener('change', updateCoverSection);
+		document.getElementById('addCoverRowBtn').onclick = () => addCoverRow({});
 
 		document.getElementById('addLeaveModal').addEventListener('click', function(ev) {
 			if (ev.target === this) openAddLeaveModal(false);
