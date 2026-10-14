@@ -31,6 +31,7 @@ CREATE TABLE IF NOT EXISTS leave_entries (
 	full_or_half VARCHAR(10) NOT NULL,
 	notes        TEXT        NULL,
 	join_date    DATE        NULL,                       -- snapshot of the employee's join date when saved
+	extra_note   TEXT        NULL,                       -- optional note, shown under the entry in the list
 	created_at   TIMESTAMP   NOT NULL DEFAULT CURRENT_TIMESTAMP,
 	PRIMARY KEY (id),
 	-- The app always loads entries per user within a date range, newest first.

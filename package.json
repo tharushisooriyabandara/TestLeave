@@ -8,6 +8,7 @@
     "start": "node server.js",
     "setup-db": "node scripts/setup-db.js",
     "migrate-study-leave": "node scripts/migrate-study-leave.js",
+    "migrate-entry-note": "node scripts/migrate-entry-note.js",
     "import-supabase": "node scripts/import-from-supabase.js",
     "import-backup": "node scripts/import-pg-backup.js"
   },

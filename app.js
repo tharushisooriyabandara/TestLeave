@@ -11,7 +11,7 @@ const pool = mysql.createPool(dbConfig({
 
 // Columns a client may write. Anything else in a request body is ignored.
 const PROFILE_FIELDS = ['id', 'name', 'pin', 'join_date', 'role', 'career_timeline', 'leave_entitlements'];
-const ENTRY_FIELDS = ['id', 'user_id', 'type', 'date', 'full_or_half', 'notes', 'join_date'];
+const ENTRY_FIELDS = ['id', 'user_id', 'type', 'date', 'full_or_half', 'notes', 'join_date', 'extra_note'];
 const JSON_FIELDS = new Set(['career_timeline', 'leave_entitlements']);
 
 function pick(body, fields) {
@@ -87,7 +87,7 @@ app.get('/api/entries', async (req, res) => {
 	const { user_id, from, to } = req.query;
 	if (!user_id || !from || !to) throw badRequest('user_id, from and to are required');
 	const [rows] = await pool.query(
-		'SELECT id, user_id, type, `date`, full_or_half, notes, join_date FROM leave_entries ' +
+		'SELECT id, user_id, type, `date`, full_or_half, notes, join_date, extra_note FROM leave_entries ' +
 		'WHERE user_id = ? AND `date` BETWEEN ? AND ? ORDER BY `date` DESC',
 		[user_id, from, to]);
 	res.json(rows);
@@ -110,7 +110,7 @@ app.post('/api/entries/batch', async (req, res) => {
 	try {
 		await conn.beginTransaction();
 		await conn.query(
-			'INSERT INTO leave_entries (id, user_id, type, `date`, full_or_half, notes, join_date) VALUES ?',
+			'INSERT INTO leave_entries (id, user_id, type, `date`, full_or_half, notes, join_date, extra_note) VALUES ?',
 			[values]);
 		await conn.commit();
 	} catch (err) {

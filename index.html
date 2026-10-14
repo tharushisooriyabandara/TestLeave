@@ -40,6 +40,8 @@
 		.card-body p { margin: 0.5rem 0; }
 		table { width: 100%; border-collapse: collapse; margin: 0.5rem 0; font-size: 0.95rem; }
 		th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
+		tr.has-note > td { border-bottom: none; }
+		tr.entry-note-row > td { padding-top: 0; font-size: 0.875rem; color: #555; white-space: pre-wrap; word-break: break-word; }
 		th { background: var(--primary-light); color: var(--primary); font-weight: 600; }
 		.sub { font-size: 0.9rem; color: #555; }
 		.period-filter-row { margin: 0 0 0.75rem 0; }
@@ -319,6 +321,10 @@
 			<div class="form-row">
 				<label for="notes">Reason for leave</label>
 				<textarea id="notes" rows="2" placeholder="e.g. Medical appointment, family matter, personal work" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.95rem;resize:vertical;"></textarea>
+			</div>
+			<div class="form-row">
+				<label for="leaveNote">Note <span class="sub" style="font-weight:400;">(optional — shown under the entry)</span></label>
+				<textarea id="leaveNote" rows="2" placeholder="e.g. Reachable by phone; tasks handed over" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.95rem;resize:vertical;"></textarea>
 			</div>
 			<div class="modal-actions">
 				<button type="submit" class="btn btn-primary" id="addBtn">Add leave</button>
@@ -2042,18 +2048,21 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			const fullHalf = e.full_or_half === 'full' ? 'Full' : e.full_or_half === 'half' ? 'Half' : 'Covered';
 			const dayAmt = entryLeaveDaysDisplay(e);
 			const esc = s => String(s == null ? '' : s).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/"/g,'&quot;');
-			return '<tr data-id="' + esc(e.id) + '"' +
+			const note = String(e.extra_note || '').trim();
+			return '<tr data-id="' + esc(e.id) + '"' + (note ? ' class="has-note"' : '') +
 				' data-type="' + esc(e.type) + '"' +
 				' data-date="' + esc(e.date) + '"' +
 				' data-full-or-half="' + esc(e.full_or_half) + '"' +
-				' data-notes="' + esc(e.notes || '') + '">' +
+				' data-notes="' + esc(e.notes || '') + '"' +
+				' data-extra-note="' + esc(note) + '">' +
 				'<td>' + e.date + '</td>' +
 				'<td>' + typeLabel + '</td>' +
 				'<td>' + fullHalf + '</td>' +
 				'<td>' + dayAmt + '</td>' +
 				'<td style="max-width:220px;word-break:break-word;">' + esc(e.notes || '—') + '</td>' +
 				'<td><button type="button" class="btn-edit edit-btn">Edit</button>' +
-				'<button type="button" class="btn-danger delete-btn">Delete</button></td></tr>';
+				'<button type="button" class="btn-danger delete-btn">Delete</button></td></tr>' +
+				(note ? '<tr class="entry-note-row"><td colspan="6"><strong>Note:</strong> ' + esc(note) + '</td></tr>' : '');
 		}).join('');
 		tbody.querySelectorAll('.edit-btn').forEach(btn => {
 			btn.onclick = () => {
@@ -2063,6 +2072,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				document.getElementById('leaveDate').value = tr.getAttribute('data-date');
 				document.getElementById('fullOrHalf').value = tr.getAttribute('data-full-or-half');
 				document.getElementById('notes').value = tr.getAttribute('data-notes') || '';
+				document.getElementById('leaveNote').value = tr.getAttribute('data-extra-note') || '';
 				document.getElementById('addBtn').textContent = 'Update leave';
 				document.getElementById('addLeaveModalTitle').textContent = 'Edit leave';
 				document.getElementById('cancelEditBtn').textContent = 'Cancel edit';
@@ -2189,6 +2199,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const leaveDate = document.getElementById('leaveDate').value;
 		const fullOrHalf = document.getElementById('fullOrHalf').value;
 		const notes = document.getElementById('notes').value.trim();
+		const extraNote = document.getElementById('leaveNote').value.trim();
 		const statusMsg = document.getElementById('statusMsg');
 		const addBtn = document.getElementById('addBtn');
 		const isEdit = !!editingEntryId;
@@ -2276,6 +2287,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					date: leaveDate,
 					full_or_half: fullOrHalf,
 					notes: notes,
+					extra_note: extraNote,
 					join_date: fmtIsoLocal(getLeaveSubjectJoinDate())
 				});
 				document.getElementById('leaveForm').reset();
@@ -2292,6 +2304,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					date: d,
 					full_or_half: fullOrHalf,
 					notes: notes,
+					extra_note: extraNote,
 					join_date: joinDate
 				}));
 				if (entries.length === 1) await insertEntry(entries[0]);
