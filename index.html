@@ -42,7 +42,7 @@
 		th, td { padding: 0.5rem 0.75rem; text-align: left; border-bottom: 1px solid #eee; }
 		tr.has-extra > td { border-bottom: none; }
 		tr.entry-extra-row > td { padding-top: 0; font-size: 0.875rem; color: #555; white-space: pre-wrap; word-break: break-word; }
-		.cover-chip { display: inline-block; margin: 0.15rem 1.25rem 0.15rem 0; color: var(--text); white-space: nowrap; }
+		.cover-chip { display: inline-block; margin: 0.15rem 0.35rem 0.15rem 0; padding: 0.1rem 0.55rem; border: 1px solid var(--border); border-radius: 999px; background: var(--primary-light); color: var(--text); white-space: nowrap; }
 		.cover-chip:first-of-type { margin-left: 0.35rem; }
 		.cover-row { display: flex; flex-wrap: wrap; gap: 0.4rem; align-items: center; margin-bottom: 0.4rem; }
 		.cover-row input, .cover-row select { padding: 0.4rem; border: 1px solid var(--border); border-radius: 4px; }
@@ -330,10 +330,6 @@
 			<div class="form-row">
 				<label for="notes">Reason for leave</label>
 				<textarea id="notes" rows="2" placeholder="e.g. Medical appointment, family matter, personal work" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.95rem;resize:vertical;"></textarea>
-			</div>
-			<div class="form-row">
-				<label for="leaveNote">Note <span class="sub" style="font-weight:400;">(optional — shown under the entry)</span></label>
-				<textarea id="leaveNote" rows="2" placeholder="e.g. Reachable by phone; tasks handed over" style="width:100%;padding:0.5rem;border:1px solid var(--border);border-radius:4px;font-family:inherit;font-size:0.95rem;resize:vertical;"></textarea>
 			</div>
 			<div class="modal-actions">
 				<button type="submit" class="btn btn-primary" id="addBtn">Add leave</button>
@@ -2163,7 +2159,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				document.getElementById('leaveDate').value = tr.getAttribute('data-date');
 				document.getElementById('fullOrHalf').value = tr.getAttribute('data-full-or-half');
 				document.getElementById('notes').value = tr.getAttribute('data-notes') || '';
-				document.getElementById('leaveNote').value = tr.getAttribute('data-extra-note') || '';
 				let covers = [];
 				try { covers = JSON.parse(tr.getAttribute('data-covers') || '[]'); } catch { /* keep empty */ }
 				setCoverRows(covers);
@@ -2293,7 +2288,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const leaveDate = document.getElementById('leaveDate').value;
 		const fullOrHalf = document.getElementById('fullOrHalf').value;
 		const notes = document.getElementById('notes').value.trim();
-		const extraNote = document.getElementById('leaveNote').value.trim();
 		const covers = fullOrHalf === 'covered' ? collectCoverRows() : [];
 		if (covers === null) return;
 		const statusMsg = document.getElementById('statusMsg');
@@ -2383,7 +2377,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					date: leaveDate,
 					full_or_half: fullOrHalf,
 					notes: notes,
-					extra_note: extraNote,
 					cover_details: covers,
 					join_date: fmtIsoLocal(getLeaveSubjectJoinDate())
 				});
@@ -2401,7 +2394,6 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 					date: d,
 					full_or_half: fullOrHalf,
 					notes: notes,
-					extra_note: extraNote,
 					cover_details: covers,
 					join_date: joinDate
 				}));
