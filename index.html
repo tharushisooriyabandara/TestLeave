@@ -2121,10 +2121,10 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const annualTotal = ent.annualTotal != null ? ent.annualTotal : ent.annual;
 		document.getElementById('annualEntitle').textContent = fmtDayAmount(annualTotal);
 		const carryNotes = [];
-		if (ent.carriedIn) carryNotes.push('Carried from prev. year: ' + fmtDayAmount(ent.carriedIn));
-		if (ent.carriedOut) carryNotes.push('Carried to next year: ' + fmtDayAmount(ent.carriedOut));
+		if (ent.carriedIn) carryNotes.push('Carried from prev. year: ' + fmtDayAmount(ent.carriedIn) + ' days');
+		if (ent.carriedOut) carryNotes.push('<span style="color:#0a5f0a;">Carried to next year: ' + fmtDayAmount(ent.carriedOut) + ' days</span>');
 		const carryInfo = document.getElementById('annualCarryInfo');
-		carryInfo.textContent = carryNotes.join(' · ');
+		carryInfo.innerHTML = carryNotes.join(' · ');
 		carryInfo.style.display = carryNotes.length ? '' : 'none';
 		document.getElementById('annualUsed').textContent = fmtDayAmount(annualUsed);
 		document.getElementById('annualRemain').textContent = fmtDayAmount(Math.max(0, ent.annual - annualUsed));
