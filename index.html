@@ -4,6 +4,8 @@
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
 	<title>Leave Logs — Delivergate Pvt Ltd</title>
+	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.css">
+	<script src="https://cdnjs.cloudflare.com/ajax/libs/flatpickr/4.6.13/flatpickr.min.js"></script>
 	<style>
 		:root { --primary: #003366; --primary-light: #e6eef5; --text: #222; --border: #ccc; }
 		* { box-sizing: border-box; }
@@ -302,17 +304,8 @@
 				</select>
 			</div>
 			<div class="form-row">
-				<label for="leaveDate" id="leaveDateLabel">Leave date (from)</label>
-				<input type="date" id="leaveDate" required>
-			</div>
-			<div class="form-row leave-range-row">
-				<label for="leaveDateTo">To date <span class="sub" style="font-weight:400;">(optional — leave blank for one day)</span></label>
-				<input type="date" id="leaveDateTo">
-			</div>
-			<div class="form-row leave-range-row">
-				<label style="display:flex;align-items:center;gap:0.4rem;font-weight:400;color:inherit;">
-					<input type="checkbox" id="skipWeekends" checked style="width:auto;"> Skip Saturdays &amp; Sundays
-				</label>
+				<label for="leaveDate" id="leaveDateLabel">Leave Date(s)</label>
+				<input type="text" id="leaveDate" placeholder="Click to pick one or more days" autocomplete="off">
 			</div>
 			<div class="form-row">
 				<label>Full / Half / Covered</label>
@@ -1684,9 +1677,8 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		if (!m) return;
 		m.classList.toggle('open', !!open);
 		m.setAttribute('aria-hidden', open ? 'false' : 'true');
-		// A date range only makes sense when adding; an edit changes one entry.
-		m.querySelectorAll('.leave-range-row').forEach(r => { r.style.display = editingEntryId ? 'none' : ''; });
-		document.getElementById('leaveDateLabel').textContent = editingEntryId ? 'Leave date' : 'Leave date (from)';
+		// Several days can be picked when adding; an edit changes one entry.
+		document.getElementById('leaveDateLabel').textContent = editingEntryId ? 'Leave Date' : 'Leave Date(s)';
 		if (open && !editingEntryId) {
 			document.getElementById('leaveForm').reset();
 			document.getElementById('addLeaveModalTitle').textContent = 'Add leave';
@@ -1698,7 +1690,10 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 			document.getElementById('leaveForm').reset();
 			clearEditMode();
 		}
-		if (!open || !editingEntryId) setCoverRows([]);
+		if (!open || !editingEntryId) {
+			setCoverRows([]);
+			setPickedDates([]);
+		}
 		if (open) updateLeaveTypeOptions();
 		updateCoverSection();
 	}
@@ -1798,7 +1793,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 	 */
 	function updateLeaveTypeOptions() {
 		const sel = document.getElementById('leaveType');
-		const date = document.getElementById('leaveDate').value || fmtIsoLocal(new Date());
+		const date = getPickedDates()[0] || fmtIsoLocal(new Date());
 		const ent = getEntitlementForDate(date);
 		const keep = editingEntryId ? sel.value : null;
 		const offer = {
@@ -2031,17 +2026,38 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		return await apiFetch('/entries/batch', { method: 'POST', body: JSON.stringify(entries) });
 	}
 
-	/** Every ISO date from `from` to `to` inclusive, optionally without Sat/Sun. */
-	function expandLeaveDates(from, to, skipWeekends) {
-		const out = [];
-		const d = new Date(from + 'T00:00:00Z');
-		const end = new Date(to + 'T00:00:00Z');
-		while (d <= end) {
-			const dow = d.getUTCDay();
-			if (!skipWeekends || (dow !== 0 && dow !== 6)) out.push(d.toISOString().slice(0, 10));
-			d.setUTCDate(d.getUTCDate() + 1);
+	// ── Leave Date(s) picker (flatpickr, multiple days) ────────────
+	let leaveDatePicker = null;
+
+	function getLeaveDatePicker() {
+		if (!leaveDatePicker && window.flatpickr) {
+			leaveDatePicker = flatpickr('#leaveDate', {
+				mode: 'multiple',
+				dateFormat: 'Y-m-d',
+				conjunction: ', ',
+				onChange: function(selected, _str, fp) {
+					// Editing changes one entry, so keep only the day just clicked.
+					if (editingEntryId && selected.length > 1) fp.setDate(selected[selected.length - 1], false);
+					updateLeaveTypeOptions();
+				}
+			});
 		}
-		return out;
+		return leaveDatePicker;
+	}
+
+	/** Picked leave days as sorted ISO dates. Falls back to typed text if the picker didn't load. */
+	function getPickedDates() {
+		const fp = getLeaveDatePicker();
+		const list = fp
+			? fp.selectedDates.map(fmtIsoLocal)
+			: document.getElementById('leaveDate').value.split(',').map(x => x.trim()).filter(x => /^\d{4}-\d{2}-\d{2}$/.test(x));
+		return Array.from(new Set(list)).sort();
+	}
+
+	function setPickedDates(list) {
+		const fp = getLeaveDatePicker();
+		if (fp) fp.setDate(list, false);
+		else document.getElementById('leaveDate').value = list.join(', ');
 	}
 
 	async function deleteEntry(id) {
@@ -2156,7 +2172,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 				const tr = btn.closest('tr');
 				editingEntryId = tr.getAttribute('data-id');
 				document.getElementById('leaveType').value = tr.getAttribute('data-type');
-				document.getElementById('leaveDate').value = tr.getAttribute('data-date');
+				setPickedDates([tr.getAttribute('data-date')]);
 				document.getElementById('fullOrHalf').value = tr.getAttribute('data-full-or-half');
 				document.getElementById('notes').value = tr.getAttribute('data-notes') || '';
 				let covers = [];
@@ -2285,7 +2301,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		if (!subjectId) { showToast('Choose whose leave you are managing.', true); return; }
 
 		const type = document.getElementById('leaveType').value;
-		const leaveDate = document.getElementById('leaveDate').value;
+		let dates = getPickedDates();
+		if (!dates.length) { showToast('Pick at least one leave date.', true); return; }
+		const leaveDate = dates[0];
 		const fullOrHalf = document.getElementById('fullOrHalf').value;
 		const notes = document.getElementById('notes').value.trim();
 		const covers = fullOrHalf === 'covered' ? collectCoverRows() : [];
@@ -2294,20 +2312,9 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		const addBtn = document.getElementById('addBtn');
 		const isEdit = !!editingEntryId;
 
-		// Adding with a "To" date saves one entry per day in the range.
-		const leaveDateTo = isEdit ? '' : document.getElementById('leaveDateTo').value;
-		const isRange = !!leaveDateTo && leaveDateTo !== leaveDate;
-		if (isRange && leaveDateTo < leaveDate) {
-			showToast('"To" date must be on or after the leave date.', true);
-			return;
-		}
-		let dates = isRange
-			? expandLeaveDates(leaveDate, leaveDateTo, document.getElementById('skipWeekends').checked)
-			: [leaveDate];
-		if (!dates.length) {
-			showToast('No working days in that range.', true);
-			return;
-		}
+		// Adding several days saves one entry per day; an edit changes one entry.
+		if (isEdit) dates = [leaveDate];
+		const isMulti = dates.length > 1;
 		if (dates.length > 60) {
 			showToast('Please add at most 60 days at a time.', true);
 			return;
@@ -2328,7 +2335,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		try {
 			for (const g of groups.values()) {
 				const existing = await fetchEntriesByRange(g.period.from, g.period.to);
-				if (isRange) {
+				if (isMulti) {
 					// Don't double-book a day that already has leave logged.
 					const taken = new Set(existing.map(e => e.date));
 					g.dates = g.dates.filter(d => taken.has(d) ? (skipped.push(d), false) : true);
@@ -2469,7 +2476,7 @@ Example leave_entitlements: [{"from":"2025-03-03","to":"2025-12-03","annual":0,"
 		});
 
 		document.getElementById('leaveManageUserSelect').addEventListener('change', onLeaveManageUserChange);
-		document.getElementById('leaveDate').addEventListener('change', updateLeaveTypeOptions);
+		getLeaveDatePicker();
 		document.getElementById('fullOrHalf').addEventListener('change', updateCoverSection);
 		document.getElementById('addCoverRowBtn').onclick = () => addCoverRow({});
 
